@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.VBox?>
 
 <VBox alignment="CENTER" spacing="10.0" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="dk.easv.swiftdoc.controller.HelloController">
+      fx:controller="dk.easv.swiftdoc.controller.MainController">
     <Button text="New" onAction="#onNewCommand"/>
     <Button text="Save" onAction="#onSaveCommand"/>
 </VBox>
