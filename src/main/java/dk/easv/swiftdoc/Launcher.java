@@ -1,5 +1,6 @@
 package dk.easv.swiftdoc;
 
+import dk.easv.swiftdoc.app.HelloApplication;
 import javafx.application.Application;
 
 public class Launcher {

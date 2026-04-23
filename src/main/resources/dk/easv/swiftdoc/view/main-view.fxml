@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox alignment="CENTER" spacing="10.0" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="dk.easv.swiftdoc.controller.HelloController">
+    <Button text="New" onAction="#onNewCommand"/>
+    <Button text="Save" onAction="#onSaveCommand"/>
+</VBox>
+

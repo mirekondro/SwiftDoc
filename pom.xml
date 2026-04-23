@@ -60,7 +60,7 @@
                         <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>dk.easv.swiftdoc/dk.easv.swiftdoc.HelloApplication</mainClass>
+                            <mainClass>dk.easv.swiftdoc/dk.easv.swiftdoc.Launcher</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>
