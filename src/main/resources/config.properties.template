@@ -1,0 +1,7 @@
+# WebLager DB config template
+# Copy this file to config.properties and fill in real values locally.
+
+db.url=jdbc:mysql://localhost:3306/weblager
+db.username=weblager_user
+db.password=change_me
+
