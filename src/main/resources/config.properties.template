@@ -1,0 +1,6 @@
+# WebLager MS SQL DB config template
+# Copy this file to config.properties and fill in real values locally.
+
+db.url=jdbc:sqlserver://localhost:1433;weblager_swiftdoc=WebLagerDB;encrypt=true;trustServerCertificate=true;
+db.username=sa
+db.password=change_me
