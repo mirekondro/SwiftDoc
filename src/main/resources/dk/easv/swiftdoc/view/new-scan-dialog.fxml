@@ -1,65 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ButtonType?>
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
-<?import javafx.scene.control.Dialog?>
 <?import javafx.scene.control.DialogPane?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
 <DialogPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="dk.easv.swiftdoc.controller.NewScanDialogController">
+            fx:controller="dk.easv.swiftdoc.controller.NewScanDialogController"
+            fx:id="dialogPane">
     <headerText>Start a New Scan</headerText>
     <contentText>Configure your scanning session and begin digitalization.</contentText>
 
-    <!-- Main content VBox -->
     <content>
-        <VBox spacing="15.0" style="-fx-padding: 15;">
-
-            <!-- Scanning Profile Section -->
-            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 4; -fx-padding: 10;">
+        <VBox spacing="16.0" style="-fx-padding: 16;">
+            <VBox spacing="10.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
                 <Label text="Scanning Profile" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
-                <ComboBox fx:id="profileComboBox" prefWidth="300.0" promptText="Select a profile..."/>
-                <Label fx:id="profileDescriptionLabel" text="Profile details will appear here" style="-fx-text-fill: #666666; -fx-font-size: 10; -fx-wrap-text: true;" wrapText="true"/>
+                <HBox spacing="12.0">
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Profile" style="-fx-font-size: 11;"/>
+                        <ComboBox fx:id="profileComboBox" promptText="Select a profile..." maxWidth="1.7976931348623157E308"/>
+                    </VBox>
+                    <VBox spacing="6.0" prefWidth="260.0" style="-fx-background-color: #f7f7f7; -fx-background-radius: 4; -fx-padding: 8;">
+                        <Label text="Description" style="-fx-font-size: 11;"/>
+                        <Label fx:id="profileDescriptionLabel" text="Profile details will appear here" style="-fx-text-fill: #666666; -fx-font-size: 10;" wrapText="true"/>
+                    </VBox>
+                </HBox>
             </VBox>
 
-            <!-- Box Details Section -->
-            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 4; -fx-padding: 10;">
-                <Label text="Box Information" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
-                <VBox spacing="5.0">
-                    <Label text="Box Name" style="-fx-font-size: 11;"/>
-                    <TextField fx:id="boxNameTextField" promptText="Enter box name (e.g., 'Inbox 001')"/>
-                    <Label fx:id="boxNameErrorLabel" text="" style="-fx-text-fill: #cc0000; -fx-font-size: 10;"/>
+            <HBox spacing="12.0">
+                <VBox spacing="8.0" HBox.hgrow="ALWAYS" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
+                    <Label text="Box Information" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+                    <GridPane hgap="8.0" vgap="6.0">
+                        <Label text="Box Name" style="-fx-font-size: 11;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                        <TextField fx:id="boxNameTextField" promptText="Enter box name (e.g., 'Inbox 001')" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                        <Label fx:id="boxNameErrorLabel" text="" style="-fx-text-fill: #cc0000; -fx-font-size: 10;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    </GridPane>
                 </VBox>
-            </VBox>
 
-            <!-- Scan Options Section -->
-            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 4; -fx-padding: 10;">
-                <Label text="Scan Options" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
-                <CheckBox fx:id="autoSplitCheckBox" text="Auto-split documents by barcode" selected="true"/>
-                <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable duplicate detection"/>
-                <CheckBox fx:id="separateDocumentsCheckBox" text="Create separate document per page" selected="false"/>
-            </VBox>
+                <VBox spacing="8.0" prefWidth="260.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
+                    <Label text="Scan Options" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+                    <CheckBox fx:id="autoSplitCheckBox" text="Auto-split documents by barcode" selected="true"/>
+                    <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable duplicate detection"/>
+                    <CheckBox fx:id="separateDocumentsCheckBox" text="Create separate document per page" selected="false"/>
+                </VBox>
+            </HBox>
 
-            <!-- Notes Section -->
-            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 4; -fx-padding: 10;">
+            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
                 <Label text="Notes (optional)" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
                 <TextArea fx:id="notesTextArea" prefRowCount="3" wrapText="true" promptText="Add any notes for this scanning session..."/>
             </VBox>
-
         </VBox>
     </content>
 
-    <!-- Dialog buttons -->
-    <buttons>
-        <Button fx:id="startScanButton" text="Start Scan" style="-fx-padding: 8 25;"/>
-        <Button fx:id="cancelButton" text="Cancel"/>
-        <Button fx:id="previewButton" text="Preview Settings"/>
-    </buttons>
+    <buttonTypes>
+        <ButtonType fx:id="startScanButtonType" text="Start Scan" buttonData="OK_DONE"/>
+        <ButtonType fx:id="previewButtonType" text="Preview Settings" buttonData="OTHER"/>
+        <ButtonType fx:id="cancelButtonType" text="Cancel" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
 </DialogPane>
 
