@@ -150,6 +150,10 @@ public class NewScanDialogController {
         ScanningProfile profile = profileComboBox.getValue();
         String boxName = boxNameTextField.getText();
 
+        // Reset before attempting — if anything fails, getCreatedBox() must
+        // return null so callers treat it as a cancel/abort.
+        createdBox = null;
+
         try {
             createdBox = sessionService.startSession(profile, boxName);
             // Success — let the event continue, dialog will close.
@@ -201,8 +205,13 @@ public class NewScanDialogController {
     }
 
     /**
-     * @return the Box created by Start Scan, or null if the user cancelled
-     *         or the dialog was closed without success.
+     * @return the Box created by Start Scan, or {@code null} if:
+     *         <ul>
+     *           <li>the user clicked Cancel</li>
+     *           <li>the user closed the dialog (X button or Esc)</li>
+     *           <li>Start Scan was clicked but failed validation or DB insert</li>
+     *         </ul>
+     *         A non-null return guarantees a Box row exists in the database.
      */
     public Box getCreatedBox() {
         return createdBox;

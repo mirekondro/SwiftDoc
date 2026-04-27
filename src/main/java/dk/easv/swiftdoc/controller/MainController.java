@@ -37,13 +37,17 @@ public class MainController {
             dialog.showAndWait();
 
             // After the dialog closes, check whether a session was actually started.
-            // getCreatedBox() is null when the user cancelled or closed the window.
+            // getCreatedBox() returns null for: Cancel button, X close, Esc key,
+            // validation failure, or DB error. Only a successful Start Scan
+            // produces a non-null Box.
             Box created = dialogController.getCreatedBox();
             if (created != null) {
                 this.activeBox = created;
                 System.out.println("Scan session started — box id: " + created.getBoxId()
                         + " (" + created.getBoxName() + ")");
                 // TODO: enable scanning UI, show box info in main view, etc. (US-09 onward)
+            } else {
+                System.out.println("New Scan cancelled — no session started.");
             }
         } catch (IOException ex) {
             System.err.println("Failed to load new scan dialog: " + ex.getMessage());
