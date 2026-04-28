@@ -1,8 +1,8 @@
 package dk.easv.swiftdoc.controller;
 
-import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.ScanningProfile;
 import dk.easv.swiftdoc.service.ScanSessionService;
+import dk.easv.swiftdoc.service.ScanSessionService.ScanSession;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -22,22 +22,18 @@ import java.util.List;
 /**
  * Controller for the New Scan dialog (US-08).
  *
- * Responsibilities:
- *  - Load available scanning profiles into the dropdown.
- *  - Live-validate that a profile is selected and a box name is entered.
- *  - On Start Scan, create the Box and expose it via {@link #getCreatedBox()}.
- *  - On Cancel, close the dialog without creating anything.
- *  - On Preview, show a summary alert without committing.
+ * On Start Scan, creates a Box + its first Document via {@link ScanSessionService}
+ * and exposes both via {@link #getCreatedSession()}.
  *
- * The MainController reads {@link #getCreatedBox()} after the dialog closes
- * to know whether a session actually started.
+ * MainController reads getCreatedSession() after the dialog closes; null
+ * means the user cancelled or something failed.
  */
 public class NewScanDialogController {
 
     private final ScanSessionService sessionService = new ScanSessionService();
 
     /** Result of the dialog. Null until Start Scan succeeds. */
-    private Box createdBox;
+    private ScanSession createdSession;
 
     @FXML private DialogPane dialogPane;
     @FXML private ComboBox<ScanningProfile> profileComboBox;
@@ -61,9 +57,6 @@ public class NewScanDialogController {
         wireButtons();
     }
 
-    /**
-     * Load profiles from DB. If it fails, show error and disable Start.
-     */
     private void loadProfiles() {
         try {
             List<ScanningProfile> profiles = sessionService.getAvailableProfiles();
@@ -77,28 +70,23 @@ public class NewScanDialogController {
         }
     }
 
-    /**
-     * When a profile is picked, show its description in the side panel.
-     */
     private void wireProfileSelection() {
         profileComboBox.getSelectionModel().selectedItemProperty()
                 .addListener((obs, oldVal, newVal) -> {
                     if (newVal == null) {
                         profileDescriptionLabel.setText("Profile details will appear here");
                     } else {
-                        String desc = newVal.getDescription();
+                        // ScanningProfile now has SplitRule (was: description)
+                        String rule = newVal.getSplitRule();
                         profileDescriptionLabel.setText(
-                                (desc == null || desc.isBlank())
-                                        ? "(no description)"
-                                        : desc);
+                                (rule == null || rule.isBlank())
+                                        ? "(no split rule configured)"
+                                        : rule);
                     }
                     refreshStartEnabled();
                 });
     }
 
-    /**
-     * Live validation of box name + start-button enable state.
-     */
     private void wireValidation() {
         boxNameTextField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal == null || newVal.isBlank()) {
@@ -110,26 +98,17 @@ public class NewScanDialogController {
         });
     }
 
-    /**
-     * Hook the dialog button actions. Start Scan must consume its event
-     * if validation fails — otherwise the dialog closes regardless.
-     */
     private void wireButtons() {
         Button startBtn = (Button) dialogPane.lookupButton(startScanButtonType);
         Button previewBtn = (Button) dialogPane.lookupButton(previewButtonType);
-        // Cancel is wired automatically by JavaFX (CANCEL_CLOSE button data closes dialog).
 
-        // Use addEventFilter so we can consume() and prevent dialog close on validation failure.
         startBtn.addEventFilter(ActionEvent.ACTION, this::onStartScan);
 
-        // Preview must NOT close the dialog. ButtonType OTHER closes by default,
-        // so we consume the event after showing the alert.
         previewBtn.addEventFilter(ActionEvent.ACTION, event -> {
             event.consume();
             onPreview();
         });
 
-        // Start out disabled until inputs are valid.
         refreshStartEnabled();
     }
 
@@ -142,21 +121,16 @@ public class NewScanDialogController {
         startBtn.setDisable(!(profileChosen && nameEntered));
     }
 
-    /**
-     * Start Scan: validate, call service, capture the created Box.
-     * If anything fails, consume the event so the dialog stays open.
-     */
     private void onStartScan(ActionEvent event) {
         ScanningProfile profile = profileComboBox.getValue();
         String boxName = boxNameTextField.getText();
 
-        // Reset before attempting — if anything fails, getCreatedBox() must
-        // return null so callers treat it as a cancel/abort.
-        createdBox = null;
+        // Reset before attempting — if anything fails, getCreatedSession()
+        // must return null so callers treat it as a cancel/abort.
+        createdSession = null;
 
         try {
-            createdBox = sessionService.startSession(profile, boxName);
-            // Success — let the event continue, dialog will close.
+            createdSession = sessionService.startSession(profile, boxName);
         } catch (IllegalArgumentException ex) {
             event.consume();
             showError("Invalid input", ex.getMessage());
@@ -166,9 +140,6 @@ public class NewScanDialogController {
         }
     }
 
-    /**
-     * Preview: show a read-only summary of what will be created.
-     */
     private void onPreview() {
         ScanningProfile profile = profileComboBox.getValue();
         String boxName = boxNameTextField.getText();
@@ -205,15 +176,11 @@ public class NewScanDialogController {
     }
 
     /**
-     * @return the Box created by Start Scan, or {@code null} if:
-     *         <ul>
-     *           <li>the user clicked Cancel</li>
-     *           <li>the user closed the dialog (X button or Esc)</li>
-     *           <li>Start Scan was clicked but failed validation or DB insert</li>
-     *         </ul>
-     *         A non-null return guarantees a Box row exists in the database.
+     * @return the ScanSession (Box + first Document) created by Start Scan,
+     *         or null if the dialog was cancelled, closed, or hit an error.
+     *         A non-null return guarantees both rows exist in the database.
      */
-    public Box getCreatedBox() {
-        return createdBox;
+    public ScanSession getCreatedSession() {
+        return createdSession;
     }
 }

@@ -8,58 +8,55 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 
 /**
  * Data access for {@link Box}.
  *
- * Sprint 1 needs only INSERT (create a new box at session start).
- * SELECT/UPDATE/DELETE arrive later as other stories pull them in.
+ * Sprint 1: INSERT only (create box at session start).
+ * SELECT/UPDATE/DELETE arrive with later stories.
+ *
+ * Schema: dbo.Boxes (BoxId, BoxName, ProfileId, GlobalRotation)
  */
 public class BoxDAO {
 
     private static final String INSERT_SQL =
-            "INSERT INTO boxes (box_name, profile_id, created_by) VALUES (?, ?, ?)";
+            "INSERT INTO dbo.Boxes (BoxName, ProfileId, GlobalRotation) " +
+                    "VALUES (?, ?, ?)";
 
     private static final String SELECT_BY_ID =
-            "SELECT box_id, box_name, profile_id, created_by, created_at " +
-                    "FROM boxes WHERE box_id = ?";
+            "SELECT BoxId, BoxName, ProfileId, GlobalRotation " +
+                    "FROM dbo.Boxes WHERE BoxId = ?";
 
     /**
-     * Insert a new box and return the fully-populated Box (with DB-generated
-     * id and timestamp).
+     * Create a new box.
      *
-     * @param boxName       human-entered box label (required, non-blank)
-     * @param profileId     FK to scanning_profiles
-     * @param createdBy     FK to users (Sprint 1: hardcoded devuser id)
-     * @return the persisted Box with its assigned box_id
-     * @throws SQLException on any DB error
+     * @param boxName    user-entered label
+     * @param profileId  FK to dbo.Profiles
+     * @return the persisted Box with DB-assigned BoxId
      */
-    public Box create(String boxName, int profileId, int createdBy) throws SQLException {
+    public Box create(String boxName, int profileId) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement insert = conn.prepareStatement(
                      INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
 
             insert.setString(1, boxName);
             insert.setInt(2, profileId);
-            insert.setInt(3, createdBy);
+            insert.setInt(3, 0);   // GlobalRotation defaults to 0 in Sprint 1
 
-            int rowsAffected = insert.executeUpdate();
-            if (rowsAffected != 1) {
-                throw new SQLException("Expected 1 row inserted, got " + rowsAffected);
+            int rows = insert.executeUpdate();
+            if (rows != 1) {
+                throw new SQLException("Expected 1 row inserted, got " + rows);
             }
 
-            int newBoxId;
+            int newId;
             try (ResultSet keys = insert.getGeneratedKeys()) {
                 if (!keys.next()) {
-                    throw new SQLException("INSERT returned no generated key for box_id");
+                    throw new SQLException("INSERT returned no generated key for BoxId");
                 }
-                newBoxId = keys.getInt(1);
+                newId = keys.getInt(1);
             }
 
-            // Re-read the row to pick up the DB-assigned timestamp.
-            return fetchById(conn, newBoxId);
+            return fetchById(conn, newId);
         }
     }
 
@@ -68,17 +65,13 @@ public class BoxDAO {
             select.setInt(1, boxId);
             try (ResultSet rs = select.executeQuery()) {
                 if (!rs.next()) {
-                    throw new SQLException("Newly inserted box_id " + boxId + " not found");
+                    throw new SQLException("Newly inserted BoxId " + boxId + " not found");
                 }
-                Timestamp created = rs.getTimestamp("created_at");
-                LocalDateTime createdAt = (created != null) ? created.toLocalDateTime() : null;
-
                 return new Box(
-                        rs.getInt("box_id"),
-                        rs.getString("box_name"),
-                        rs.getInt("profile_id"),
-                        rs.getInt("created_by"),
-                        createdAt
+                        rs.getInt("BoxId"),
+                        rs.getString("BoxName"),
+                        rs.getInt("ProfileId"),
+                        rs.getInt("GlobalRotation")
                 );
             }
         }

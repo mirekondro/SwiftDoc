@@ -1,18 +1,25 @@
 package dk.easv.swiftdoc.model;
 
+/**
+ * Represents a scanning profile (one "client").
+ * Maps to the dbo.Profiles table.
+ *
+ *   ProfileId   = primary key
+ *   ProfileName = display name (used in dropdown and export filenames)
+ *   SplitRule   = description of how documents are split for this profile
+ *                 (e.g. "Barcode CODE128 means new document"). Free-text in
+ *                 Sprint 1; could become structured config later.
+ */
 public class ScanningProfile {
+
     private int profileId;
     private String profileName;
-    private String description;
-    private String barcodeSplitRule;
-    private int createdBy;
+    private String splitRule;
 
-    public ScanningProfile(int profileId, String profileName, String description, String barcodeSplitRule, int createdBy) {
+    public ScanningProfile(int profileId, String profileName, String splitRule) {
         this.profileId = profileId;
         this.profileName = profileName;
-        this.description = description;
-        this.barcodeSplitRule = barcodeSplitRule;
-        this.createdBy = createdBy;
+        this.splitRule = splitRule;
     }
 
     public int getProfileId() {
@@ -31,33 +38,17 @@ public class ScanningProfile {
         this.profileName = profileName;
     }
 
-    public String getDescription() {
-        return description;
+    public String getSplitRule() {
+        return splitRule;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setSplitRule(String splitRule) {
+        this.splitRule = splitRule;
     }
 
-    public String getBarcodeSplitRule() {
-        return barcodeSplitRule;
-    }
-
-    public void setBarcodeSplitRule(String barcodeSplitRule) {
-        this.barcodeSplitRule = barcodeSplitRule;
-    }
-
-    public int getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(int createdBy) {
-        this.createdBy = createdBy;
-    }
-
+    /** ComboBox renders items via toString(). */
     @Override
     public String toString() {
         return profileName;
     }
 }
-

@@ -1,27 +1,30 @@
 package dk.easv.swiftdoc.model;
 
-import java.time.LocalDateTime;
-
 /**
  * Represents a scanning session target — a "box" of paper to scan.
- * Maps to the boxes table.
+ * Maps to the dbo.Boxes table.
  *
- * Created via {@link dk.easv.swiftdoc.service.ScanSessionService#startSession}.
+ *   BoxId          = primary key (auto-increment)
+ *   BoxName        = human label (e.g. "Inbox 001")
+ *   ProfileId      = FK to Profiles, set at session start
+ *   GlobalRotation = default rotation applied to every page in the box
+ *                    (0, 90, 180, 270). Sprint 1 always 0.
+ *
+ * The DB schema has no createdBy/createdAt yet — audit info will live in
+ * the SystemLogs table when US-22 is implemented.
  */
 public class Box {
 
     private int boxId;
     private String boxName;
     private int profileId;
-    private int createdBy;
-    private LocalDateTime createdAt;
+    private int globalRotation;
 
-    public Box(int boxId, String boxName, int profileId, int createdBy, LocalDateTime createdAt) {
+    public Box(int boxId, String boxName, int profileId, int globalRotation) {
         this.boxId = boxId;
         this.boxName = boxName;
         this.profileId = profileId;
-        this.createdBy = createdBy;
-        this.createdAt = createdAt;
+        this.globalRotation = globalRotation;
     }
 
     public int getBoxId() {
@@ -48,20 +51,12 @@ public class Box {
         this.profileId = profileId;
     }
 
-    public int getCreatedBy() {
-        return createdBy;
+    public int getGlobalRotation() {
+        return globalRotation;
     }
 
-    public void setCreatedBy(int createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    public void setGlobalRotation(int globalRotation) {
+        this.globalRotation = globalRotation;
     }
 
     @Override

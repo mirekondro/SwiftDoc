@@ -5,6 +5,7 @@ module dk.easv.swiftdoc {
     requires java.net.http;
     requires com.google.zxing;
     requires java.desktop;
+    requires com.google.zxing.javase;
 
     opens dk.easv.swiftdoc.app to javafx.graphics;
     opens dk.easv.swiftdoc.controller to javafx.fxml;

@@ -1,6 +1,6 @@
 package dk.easv.swiftdoc.controller;
 
-import dk.easv.swiftdoc.model.Box;
+import dk.easv.swiftdoc.service.ScanSessionService.ScanSession;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Dialog;
@@ -11,12 +11,11 @@ import java.io.IOException;
 public class MainController {
 
     /**
-     * The currently active scanning session's box.
+     * The currently active scanning session.
      * Set when the user successfully starts a scan; null when no session is active.
-     * Sprint 1 doesn't yet do anything with this besides hold it — US-09 picks it up
-     * to know which box to attach incoming files to.
+     * US-09 picks this up to know which document to attach incoming files to.
      */
-    private Box activeBox;
+    private ScanSession activeSession;
 
     @FXML
     private void initialize() {
@@ -36,16 +35,13 @@ public class MainController {
             dialog.setTitle("New Scan");
             dialog.showAndWait();
 
-            // After the dialog closes, check whether a session was actually started.
-            // getCreatedBox() returns null for: Cancel button, X close, Esc key,
-            // validation failure, or DB error. Only a successful Start Scan
-            // produces a non-null Box.
-            Box created = dialogController.getCreatedBox();
-            if (created != null) {
-                this.activeBox = created;
-                System.out.println("Scan session started — box id: " + created.getBoxId()
-                        + " (" + created.getBoxName() + ")");
-                // TODO: enable scanning UI, show box info in main view, etc. (US-09 onward)
+            ScanSession started = dialogController.getCreatedSession();
+            if (started != null) {
+                this.activeSession = started;
+                System.out.println("Scan session started — Box id: " + started.box().getBoxId()
+                        + " (" + started.box().getBoxName() + "), "
+                        + "first Document id: " + started.firstDocument().getDocumentId());
+                // TODO: enable scanning UI, show box info in main view, etc. (rest of US-09)
             } else {
                 System.out.println("New Scan cancelled — no session started.");
             }
@@ -60,7 +56,7 @@ public class MainController {
         // TODO: handle save command
     }
 
-    public Box getActiveBox() {
-        return activeBox;
+    public ScanSession getActiveSession() {
+        return activeSession;
     }
 }

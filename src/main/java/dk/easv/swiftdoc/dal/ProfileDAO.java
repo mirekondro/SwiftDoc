@@ -13,19 +13,16 @@ import java.util.List;
 /**
  * Data access for {@link ScanningProfile}.
  *
- * Sprint 1 only needs read access (populate the New Scan dropdown).
+ * Sprint 1: only read access (populate the New Scan dropdown).
  * Full CRUD comes in Sprint 3 with US-07.
  */
 public class ProfileDAO {
 
     private static final String SELECT_ALL =
-            "SELECT profile_id, profile_name, description, barcode_split_rule, created_by " +
-                    "FROM scanning_profiles " +
-                    "ORDER BY profile_name";
+            "SELECT ProfileId, ProfileName, SplitRule " +
+                    "FROM dbo.Profiles " +
+                    "ORDER BY ProfileName";
 
-    /**
-     * @return all scanning profiles ordered by name. Empty list if none.
-     */
     public List<ScanningProfile> getAll() throws SQLException {
         List<ScanningProfile> profiles = new ArrayList<>();
 
@@ -35,11 +32,9 @@ public class ProfileDAO {
 
             while (rs.next()) {
                 profiles.add(new ScanningProfile(
-                        rs.getInt("profile_id"),
-                        rs.getString("profile_name"),
-                        rs.getString("description"),
-                        rs.getString("barcode_split_rule"),
-                        rs.getInt("created_by")
+                        rs.getInt("ProfileId"),
+                        rs.getString("ProfileName"),
+                        rs.getString("SplitRule")
                 ));
             }
         }
