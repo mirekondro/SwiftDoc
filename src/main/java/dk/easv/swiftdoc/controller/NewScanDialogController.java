@@ -2,7 +2,7 @@ package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.model.ScanningProfile;
 import dk.easv.swiftdoc.service.ScanSessionService;
-import dk.easv.swiftdoc.service.ScanSessionService.ScanSession;
+import dk.easv.swiftdoc.service.ScanSession;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;

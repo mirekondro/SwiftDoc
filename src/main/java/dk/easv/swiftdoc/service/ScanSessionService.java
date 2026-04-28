@@ -17,9 +17,6 @@ import java.util.List;
  *  - Provide the list of available profiles to the New Scan dialog.
  *  - Validate user input (profile selected, box name not blank).
  *  - Create the Box AND the first empty Document so files have somewhere to land.
- *
- * Stays narrow: session START. Subsequent stories (US-09 fetch files,
- * US-10 counter, etc.) belong to other services.
  */
 public class ScanSessionService {
 
@@ -38,21 +35,9 @@ public class ScanSessionService {
         this.documentDAO = documentDAO;
     }
 
-    /**
-     * @return profiles available for the New Scan dropdown.
-     *         Sprint 1: returns all profiles.
-     *         Sprint 3 (US-06): filter by current user's access.
-     */
     public List<ScanningProfile> getAvailableProfiles() throws SQLException {
         return profileDAO.getAll();
     }
-
-    /**
-     * Result of starting a session: the Box and its first empty Document.
-     * Files scanned next will attach to the firstDocument until a barcode
-     * is detected, at which point a new Document gets created.
-     */
-    public record ScanSession(Box box, Document firstDocument) {}
 
     /**
      * Start a new scanning session by creating a Box and its first Document.
@@ -66,9 +51,7 @@ public class ScanSessionService {
         }
 
         Box box = boxDAO.create(boxName.trim(), profile.getProfileId());
-        // First document of a box has no triggering barcode — pass null.
         Document firstDocument = documentDAO.create(box.getBoxId(), null);
-
         return new ScanSession(box, firstDocument);
     }
 }
