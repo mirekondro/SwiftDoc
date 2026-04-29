@@ -8,22 +8,20 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 
 public class MainController {
 
     private final ScanService scanService = new ScanService();
 
-    /**
-     * The currently active scanning session.
-     * Set after the user successfully starts a scan; null when no session
-     * is active.
-     */
     private ScanSession activeSession;
 
     @FXML private Button scanButton;
@@ -33,8 +31,7 @@ public class MainController {
 
     @FXML
     private void initialize() {
-        // No active session at startup — Scan button starts disabled (set in FXML),
-        // labels show placeholder text. Nothing else needed here yet.
+        // Scan button starts disabled in FXML; enabled after a session starts.
     }
 
     @FXML
@@ -63,7 +60,6 @@ public class MainController {
         }
     }
 
-    /** Called once a session is created — enables Scan, updates info labels. */
     private void onSessionStarted() {
         scanButton.setDisable(false);
         refreshSessionLabels();
@@ -73,16 +69,9 @@ public class MainController {
                 + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
     }
 
-    /**
-     * Scan button handler. Runs the actual scan on a background thread so
-     * the UI stays responsive — the API call can take a couple of seconds.
-     * UI updates always happen back on the JavaFX thread via Platform.runLater.
-     */
     @FXML
     private void onScanCommand() {
         if (activeSession == null) {
-            // Defensive: button shouldn't be enabled without a session, but
-            // belt-and-suspenders.
             return;
         }
 
@@ -94,18 +83,49 @@ public class MainController {
         worker.start();
     }
 
-    /** Runs on background thread. Must NOT touch JavaFX nodes directly. */
+    /** Background thread. Must NOT touch JavaFX nodes directly. */
     private void performScan() {
         try {
             List<ScanResult> results = scanService.scan(activeSession);
             Platform.runLater(() -> applyResultsToUi(results));
-        } catch (Exception ex) {
+
+        } catch (IOException ex) {
+            // Network or image-processing failure — retryable.
             ex.printStackTrace();
-            Platform.runLater(() -> showScanError(ex));
+            Platform.runLater(() -> handleRetryableError(
+                    "Connection problem",
+                    explainIoException(ex)
+            ));
+
+        } catch (SQLException ex) {
+            // Database failure — retryable; user might be able to fix the DB.
+            ex.printStackTrace();
+            Platform.runLater(() -> handleRetryableError(
+                    "Database error",
+                    "Could not save the scan to the database.\n\n"
+                            + "This usually means the server is unreachable or "
+                            + "the schema is out of sync.\n\nDetails: " + ex.getMessage()
+            ));
+
+        } catch (InterruptedException ex) {
+            // The thread was cancelled — restore the interrupt flag and bail
+            // quietly. Not user-visible: this happens during app shutdown.
+            Thread.currentThread().interrupt();
+            Platform.runLater(() -> {
+                lastResultLabel.setText("Scan interrupted.");
+                scanButton.setDisable(false);
+            });
+
+        } catch (Exception ex) {
+            // Anything else is a programmer error (NPE, IllegalState, etc.).
+            // Don't offer retry — same code will fail the same way. Just show
+            // the details so we can debug from the screenshot.
+            ex.printStackTrace();
+            Platform.runLater(() -> handleUnexpectedError(ex));
         }
     }
 
-    /** Runs on JavaFX thread. */
+    /** JavaFX thread. */
     private void applyResultsToUi(List<ScanResult> results) {
         for (ScanResult r : results) {
             switch (r.kind()) {
@@ -139,15 +159,82 @@ public class MainController {
         counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());
     }
 
-    private void showScanError(Exception ex) {
+    /**
+     * Show an error dialog with Retry/Cancel buttons.
+     * If the user clicks Retry, immediately re-runs the scan.
+     * If Cancel, leaves the UI in a state where the user can click Scan again
+     * manually whenever they want.
+     */
+    private void handleRetryableError(String header, String body) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Scan failed");
-        alert.setHeaderText("Could not complete the scan");
-        alert.setContentText(ex.getClass().getSimpleName() + ": " + ex.getMessage());
+        alert.setHeaderText(header);
+        alert.setContentText(body);
+
+        ButtonType retry = new ButtonType("Retry");
+        ButtonType cancel = new ButtonType("Cancel", ButtonType.CANCEL.getButtonData());
+        alert.getButtonTypes().setAll(retry, cancel);
+
+        Optional<ButtonType> choice = alert.showAndWait();
+        scanButton.setDisable(false);
+
+        if (choice.isPresent() && choice.get() == retry) {
+            lastResultLabel.setText("Retrying...");
+            onScanCommand();   // re-runs the whole flow
+        } else {
+            lastResultLabel.setText("Scan cancelled. Press Scan to try again.");
+        }
+    }
+
+    /**
+     * Programmer error (unexpected exception type). No retry — same bug
+     * would just trigger the same crash.
+     */
+    private void handleUnexpectedError(Exception ex) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Unexpected error");
+        alert.setHeaderText("Something went wrong inside the app");
+        alert.setContentText(
+                "This is probably a bug. Details have been printed to the console.\n\n"
+                        + ex.getClass().getSimpleName() + ": " + ex.getMessage());
         alert.showAndWait();
 
-        lastResultLabel.setText("Last scan failed: " + ex.getMessage());
+        lastResultLabel.setText("Last scan failed (see console).");
         scanButton.setDisable(false);
+    }
+
+    /**
+     * Turn an IOException into something the user can act on.
+     * IOException is a catchall in JDK HTTP — the message is usually clear
+     * but sometimes cryptic, so we map common cases to friendlier text.
+     */
+    private String explainIoException(IOException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+
+        if (message.contains("timed out") || message.contains("timeout")) {
+            return "The scanner API didn't respond in time.\n\n"
+                    + "Check your internet connection and try again.";
+        }
+        if (message.contains("unable to find") || message.contains("unknown host")
+                || message.contains("no address associated")) {
+            return "Couldn't find the scanner API server.\n\n"
+                    + "Check your internet connection and DNS.";
+        }
+        if (message.contains("connection refused") || message.contains("connect")) {
+            return "Couldn't connect to the scanner API.\n\n"
+                    + "The server may be down. Try again in a moment.";
+        }
+        if (message.contains("http")) {
+            // e.g. "Scan API returned HTTP 503 ..."
+            return "The scanner API returned an unexpected response.\n\n"
+                    + "Details: " + ex.getMessage();
+        }
+        if (message.contains("imageio") || message.contains("decode")) {
+            return "The downloaded page couldn't be processed.\n\n"
+                    + "It may be corrupt. Skip this one and try again.";
+        }
+        // Fall-through: surface the raw message.
+        return "Could not complete the scan.\n\nDetails: " + ex.getMessage();
     }
 
     @FXML
