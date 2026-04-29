@@ -1,5 +1,6 @@
 package dk.easv.swiftdoc.controller;
 
+import dk.easv.swiftdoc.dal.TiffImageLoader;
 import dk.easv.swiftdoc.service.ScanService;
 import dk.easv.swiftdoc.service.ScanService.ScanResult;
 import dk.easv.swiftdoc.service.ScanSession;
@@ -12,6 +13,8 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -21,6 +24,7 @@ import java.util.Optional;
 public class MainController {
 
     private final ScanService scanService = new ScanService();
+    private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
 
     private ScanSession activeSession;
 
@@ -28,6 +32,8 @@ public class MainController {
     @FXML private Label sessionInfoLabel;
     @FXML private Label counterLabel;
     @FXML private Label lastResultLabel;
+    @FXML private Label viewerCaptionLabel;
+    @FXML private ImageView pageImageView;
 
     @FXML
     private void initialize() {
@@ -64,6 +70,8 @@ public class MainController {
         scanButton.setDisable(false);
         refreshSessionLabels();
         lastResultLabel.setText("Ready. Press Scan to fetch the next page.");
+        viewerCaptionLabel.setText("No page to display yet");
+        pageImageView.setImage(null);
         System.out.println("Session started — Box id "
                 + activeSession.getBox().getBoxId()
                 + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
@@ -74,7 +82,6 @@ public class MainController {
         if (activeSession == null) {
             return;
         }
-
         scanButton.setDisable(true);
         lastResultLabel.setText("Scanning...");
 
@@ -90,26 +97,19 @@ public class MainController {
             Platform.runLater(() -> applyResultsToUi(results));
 
         } catch (IOException ex) {
-            // Network or image-processing failure — retryable.
             ex.printStackTrace();
             Platform.runLater(() -> handleRetryableError(
-                    "Connection problem",
-                    explainIoException(ex)
-            ));
+                    "Connection problem", explainIoException(ex)));
 
         } catch (SQLException ex) {
-            // Database failure — retryable; user might be able to fix the DB.
             ex.printStackTrace();
             Platform.runLater(() -> handleRetryableError(
                     "Database error",
                     "Could not save the scan to the database.\n\n"
                             + "This usually means the server is unreachable or "
-                            + "the schema is out of sync.\n\nDetails: " + ex.getMessage()
-            ));
+                            + "the schema is out of sync.\n\nDetails: " + ex.getMessage()));
 
         } catch (InterruptedException ex) {
-            // The thread was cancelled — restore the interrupt flag and bail
-            // quietly. Not user-visible: this happens during app shutdown.
             Thread.currentThread().interrupt();
             Platform.runLater(() -> {
                 lastResultLabel.setText("Scan interrupted.");
@@ -117,9 +117,6 @@ public class MainController {
             });
 
         } catch (Exception ex) {
-            // Anything else is a programmer error (NPE, IllegalState, etc.).
-            // Don't offer retry — same code will fail the same way. Just show
-            // the details so we can debug from the screenshot.
             ex.printStackTrace();
             Platform.runLater(() -> handleUnexpectedError(ex));
         }
@@ -135,6 +132,12 @@ public class MainController {
                             + " (" + r.savedFile().getTiffData().length + " bytes)");
                     System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
                             + " in Document " + r.savedFile().getDocumentId());
+
+                    showPageInViewer(
+                            r.tiffBytes(),
+                            "File #" + r.savedFile().getReferenceId()
+                                    + " — Document " + r.savedFile().getDocumentId()
+                    );
                 }
                 case DOCUMENT_SPLIT -> {
                     lastResultLabel.setText("Barcode \"" + r.barcodeValue()
@@ -142,6 +145,13 @@ public class MainController {
                             + r.newDocument().getDocumentNumber() + " started");
                     System.out.println("SPLIT: barcode " + r.barcodeValue()
                             + " → Document id " + r.newDocument().getDocumentId());
+
+                    showPageInViewer(
+                            r.tiffBytes(),
+                            "Separator [" + r.barcodeValue()
+                                    + "] — Document #"
+                                    + r.newDocument().getDocumentNumber() + " started"
+                    );
                 }
             }
         }
@@ -150,21 +160,31 @@ public class MainController {
         scanButton.setDisable(false);
     }
 
+    /**
+     * Decode the TIFF bytes and show them in the viewer.
+     * Failure here is non-fatal — we keep the previous image and log a note,
+     * because the page is already saved/processed at this point.
+     */
+    private void showPageInViewer(byte[] tiffBytes, String caption) {
+        try {
+            Image image = tiffImageLoader.load(tiffBytes);
+            pageImageView.setImage(image);
+            viewerCaptionLabel.setText(caption);
+        } catch (IOException ex) {
+            System.err.println("Could not decode TIFF for viewer: " + ex.getMessage());
+            viewerCaptionLabel.setText(caption + "  (preview unavailable)");
+        }
+    }
+
     private void refreshSessionLabels() {
         sessionInfoLabel.setText(
                 "Box #" + activeSession.getBox().getBoxId() + " "
-                        + "(" + activeSession.getBox().getBoxName() + ") — "
-                        + "current document: #"
+                        + "(" + activeSession.getBox().getBoxName() + ")\n"
+                        + "Current document: #"
                         + activeSession.getCurrentDocument().getDocumentNumber());
         counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());
     }
 
-    /**
-     * Show an error dialog with Retry/Cancel buttons.
-     * If the user clicks Retry, immediately re-runs the scan.
-     * If Cancel, leaves the UI in a state where the user can click Scan again
-     * manually whenever they want.
-     */
     private void handleRetryableError(String header, String body) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Scan failed");
@@ -180,16 +200,12 @@ public class MainController {
 
         if (choice.isPresent() && choice.get() == retry) {
             lastResultLabel.setText("Retrying...");
-            onScanCommand();   // re-runs the whole flow
+            onScanCommand();
         } else {
             lastResultLabel.setText("Scan cancelled. Press Scan to try again.");
         }
     }
 
-    /**
-     * Programmer error (unexpected exception type). No retry — same bug
-     * would just trigger the same crash.
-     */
     private void handleUnexpectedError(Exception ex) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Unexpected error");
@@ -203,11 +219,6 @@ public class MainController {
         scanButton.setDisable(false);
     }
 
-    /**
-     * Turn an IOException into something the user can act on.
-     * IOException is a catchall in JDK HTTP — the message is usually clear
-     * but sometimes cryptic, so we map common cases to friendlier text.
-     */
     private String explainIoException(IOException ex) {
         String message = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
 
@@ -225,7 +236,6 @@ public class MainController {
                     + "The server may be down. Try again in a moment.";
         }
         if (message.contains("http")) {
-            // e.g. "Scan API returned HTTP 503 ..."
             return "The scanner API returned an unexpected response.\n\n"
                     + "Details: " + ex.getMessage();
         }
@@ -233,7 +243,6 @@ public class MainController {
             return "The downloaded page couldn't be processed.\n\n"
                     + "It may be corrupt. Skip this one and try again.";
         }
-        // Fall-through: surface the raw message.
         return "Could not complete the scan.\n\nDetails: " + ex.getMessage();
     }
 

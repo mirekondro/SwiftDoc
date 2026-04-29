@@ -19,8 +19,8 @@ public class HelloApplication extends Application {
             testDatabaseConnectionInBackground();
 
             FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("/dk/easv/swiftdoc/view/main-view.fxml"));
-            Scene scene = new Scene(fxmlLoader.load(), 320, 240);
-            stage.setTitle("Hello!");
+            Scene scene = new Scene(fxmlLoader.load());
+            stage.setTitle("SwiftDoc");
             stage.setScene(scene);
             stage.show();
         } catch (Exception ex) {
