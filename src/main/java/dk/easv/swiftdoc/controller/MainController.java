@@ -15,6 +15,9 @@ import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.HBox;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -27,7 +30,9 @@ public class MainController {
     private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
 
     private ScanSession activeSession;
+    private double viewerRotationDegrees = 0.0;
 
+    @FXML private HBox root;
     @FXML private Button scanButton;
     @FXML private Label sessionInfoLabel;
     @FXML private Label counterLabel;
@@ -37,7 +42,51 @@ public class MainController {
 
     @FXML
     private void initialize() {
+        Platform.runLater(() -> root.requestFocus());
         // Scan button starts disabled in FXML; enabled after a session starts.
+    }
+
+    @FXML
+    private void onKeyPressed(KeyEvent event) {
+        if (event.getCode() == KeyCode.F1) {
+            onNewCommand();
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.F2) {
+            onScanCommand();
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.F3) {
+            rotateViewer(-90);
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.F4) {
+            rotateViewer(90);
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && event.getCode() == KeyCode.R) {
+            rotateViewer(90);
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && event.getCode() == KeyCode.L) {
+            rotateViewer(-90);
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && event.getCode() == KeyCode.DIGIT0) {
+            resetViewerRotation();
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && event.getCode() == KeyCode.S) {
+            onSaveCommand();
+            event.consume();
+        }
     }
 
     @FXML
@@ -169,11 +218,27 @@ public class MainController {
         try {
             Image image = tiffImageLoader.load(tiffBytes);
             pageImageView.setImage(image);
+            pageImageView.setRotate(viewerRotationDegrees);
             viewerCaptionLabel.setText(caption);
         } catch (IOException ex) {
             System.err.println("Could not decode TIFF for viewer: " + ex.getMessage());
             viewerCaptionLabel.setText(caption + "  (preview unavailable)");
         }
+    }
+
+    private void rotateViewer(int deltaDegrees) {
+        viewerRotationDegrees = (viewerRotationDegrees + deltaDegrees) % 360;
+        if (viewerRotationDegrees < 0) {
+            viewerRotationDegrees += 360;
+        }
+        pageImageView.setRotate(viewerRotationDegrees);
+        viewerCaptionLabel.setText("Rotation: " + (int) viewerRotationDegrees + "°");
+    }
+
+    private void resetViewerRotation() {
+        viewerRotationDegrees = 0;
+        pageImageView.setRotate(viewerRotationDegrees);
+        viewerCaptionLabel.setText("Rotation: 0°");
     }
 
     private void refreshSessionLabels() {

@@ -11,6 +11,9 @@
 
 <HBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="dk.easv.swiftdoc.controller.MainController"
+      fx:id="root"
+      onKeyPressed="#onKeyPressed"
+      focusTraversable="true"
       spacing="10.0" prefWidth="900.0" prefHeight="600.0"
       style="-fx-padding: 10;">
 
@@ -26,6 +29,12 @@
         <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true"/>
         <Label fx:id="counterLabel" text="Files scanned: 0"/>
         <Label fx:id="lastResultLabel" text="" wrapText="true"/>
+
+        <Separator/>
+
+        <Label text="Shortcuts" style="-fx-font-weight: bold;"/>
+        <Label text="F1  – New scan&#10;F2  – Scan&#10;Ctrl+R – Rotate right&#10;Ctrl+L – Rotate left&#10;Ctrl+0 – Reset rotation&#10;Ctrl+S – Save"
+               wrapText="true"/>
     </VBox>
 
     <Separator orientation="VERTICAL"/>
