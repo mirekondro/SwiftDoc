@@ -1,11 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox alignment="CENTER" spacing="10.0" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="dk.easv.swiftdoc.controller.MainController">
-    <Button text="New" onAction="#onNewCommand"/>
-    <Button text="Save" onAction="#onSaveCommand"/>
-</VBox>
+<HBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="dk.easv.swiftdoc.controller.MainController"
+      spacing="10.0" prefWidth="900.0" prefHeight="600.0"
+      style="-fx-padding: 10;">
 
+    <!-- LEFT: controls and session info -->
+    <VBox alignment="TOP_CENTER" spacing="10.0" prefWidth="280.0">
+        <Button text="New" onAction="#onNewCommand" maxWidth="Infinity"/>
+        <Button text="Save" onAction="#onSaveCommand" maxWidth="Infinity"/>
+
+        <Separator/>
+
+        <Button fx:id="scanButton" text="Scan" onAction="#onScanCommand"
+                disable="true" maxWidth="Infinity"/>
+        <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true"/>
+        <Label fx:id="counterLabel" text="Files scanned: 0"/>
+        <Label fx:id="lastResultLabel" text="" wrapText="true"/>
+    </VBox>
+
+    <Separator orientation="VERTICAL"/>
+
+    <!-- RIGHT: viewer -->
+    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+        <Label fx:id="viewerCaptionLabel" text="No page to display yet"
+               style="-fx-font-weight: bold;"/>
+        <StackPane VBox.vgrow="ALWAYS"
+                   style="-fx-background-color: #f0f0f0; -fx-border-color: #cccccc;">
+            <ImageView fx:id="pageImageView"
+                       preserveRatio="true"
+                       pickOnBounds="true"
+                       smooth="true"
+                       fitWidth="560.0"
+                       fitHeight="540.0"/>
+        </StackPane>
+    </VBox>
+</HBox>

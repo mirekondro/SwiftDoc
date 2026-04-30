@@ -21,6 +21,33 @@
             <version>12.6.1.jre11</version>
         </dependency>
 
+        <!-- TIFF support for ImageIO. Java's stock ImageIO does not handle TIFF;
+     this plugin registers a TIFF reader so ImageIO.read() works on .tiff bytes. -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-tiff</artifactId>
+            <version>3.11.0</version>
+        </dependency>
+
+        <!-- ZXing barcode reader. 'core' has the algorithms; 'javase' adds the
+             bridge to BufferedImage which is what we feed in. -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>21.0.6</version>
+        </dependency>
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -55,6 +82,7 @@
                 <configuration>
                     <source>24</source>
                     <target>24</target>
+                    <compilerArgs>--enable-preview</compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
