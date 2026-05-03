@@ -13,14 +13,22 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Clients: owns multiple scanning profiles
+CREATE TABLE IF NOT EXISTS clients (
+    client_id INT PRIMARY KEY AUTO_INCREMENT,
+    client_name VARCHAR(150) NOT NULL
+);
+
 -- Scanning profiles: define barcode split rules
 CREATE TABLE IF NOT EXISTS scanning_profiles (
     profile_id INT PRIMARY KEY AUTO_INCREMENT,
     profile_name VARCHAR(150) NOT NULL,
     description TEXT,
     barcode_split_rule VARCHAR(255),
+    client_id INT NOT NULL,
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(client_id),
     FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 
@@ -80,4 +88,3 @@ CREATE TABLE IF NOT EXISTS system_logs (
 INSERT INTO users (username, email, password_hash, user_role)
 VALUES ('admin', 'admin@weblager.local', 'hashed_admin_password', 'ADMIN')
 ON DUPLICATE KEY UPDATE user_role = 'ADMIN';
-
