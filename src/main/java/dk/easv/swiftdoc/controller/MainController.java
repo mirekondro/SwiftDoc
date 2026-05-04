@@ -1,9 +1,15 @@
 package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.dal.TiffImageLoader;
+import dk.easv.swiftdoc.model.Box;
+import dk.easv.swiftdoc.model.Document;
+import dk.easv.swiftdoc.model.File;
 import dk.easv.swiftdoc.service.ScanService;
 import dk.easv.swiftdoc.service.ScanService.ScanResult;
 import dk.easv.swiftdoc.service.ScanSession;
+import dk.easv.swiftdoc.service.SidebarService;
+import dk.easv.swiftdoc.service.SidebarService.BoxBranch;
+import dk.easv.swiftdoc.service.SidebarService.DocumentBranch;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -13,6 +19,8 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
@@ -27,6 +35,7 @@ import java.util.Optional;
 public class MainController {
 
     private final ScanService scanService = new ScanService();
+    private final SidebarService sidebarService = new SidebarService();
     private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
 
     private ScanSession activeSession;
@@ -39,11 +48,48 @@ public class MainController {
     @FXML private Label lastResultLabel;
     @FXML private Label viewerCaptionLabel;
     @FXML private ImageView pageImageView;
+    @FXML private TreeView<SidebarNode> sidebarTree;
+
+    /**
+     * Wrapper for tree node values. Each node holds either a Box, a Document,
+     * or a File — and renders its display text accordingly.
+     */
+    public record SidebarNode(Kind kind, Box box, Document document, File file) {
+        public enum Kind { BOX, DOCUMENT, FILE }
+
+        static SidebarNode forBox(Box box) {
+            return new SidebarNode(Kind.BOX, box, null, null);
+        }
+        static SidebarNode forDocument(Document doc) {
+            return new SidebarNode(Kind.DOCUMENT, null, doc, null);
+        }
+        static SidebarNode forFile(File file) {
+            return new SidebarNode(Kind.FILE, null, null, file);
+        }
+
+        @Override
+        public String toString() {
+            return switch (kind) {
+                case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId() + " — " + box.getBoxName();
+                case DOCUMENT -> "\uD83D\uDCC4 Document #" + document.getDocumentNumber()
+                        + (document.getBarcodeValue() != null
+                        ? " [" + document.getBarcodeValue() + "]"
+                        : "");
+                case FILE -> "\uD83D\uDCC3 File #" + file.getReferenceId();
+            };
+        }
+    }
 
     @FXML
     private void initialize() {
         Platform.runLater(() -> root.requestFocus());
-        // Scan button starts disabled in FXML; enabled after a session starts.
+
+        // Sidebar tree setup — invisible root, populated below.
+        sidebarTree.setRoot(new TreeItem<>(null));
+        loadSidebarTree();
+
+        sidebarTree.getSelectionModel().selectedItemProperty()
+                .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
     }
 
     @FXML
@@ -89,6 +135,144 @@ public class MainController {
         }
     }
 
+    // ---------------------------------------------------------------------
+    // Sidebar tree
+    // ---------------------------------------------------------------------
+
+    /**
+     * Load the historical tree from the DB and populate the sidebar.
+     * Runs synchronously on the FX thread for now — typical school project
+     * volumes are small enough that this is fine. If the DB ever holds
+     * thousands of files, move it to a background thread.
+     */
+    private void loadSidebarTree() {
+        try {
+            List<BoxBranch> branches = sidebarService.loadTree();
+            TreeItem<SidebarNode> root = sidebarTree.getRoot();
+            root.getChildren().clear();
+
+            for (BoxBranch branch : branches) {
+                root.getChildren().add(buildBoxItem(branch));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            sidebarTree.setRoot(new TreeItem<>(null));
+            System.err.println("Could not load sidebar tree: " + ex.getMessage());
+        }
+    }
+
+    private TreeItem<SidebarNode> buildBoxItem(BoxBranch branch) {
+        TreeItem<SidebarNode> boxItem = new TreeItem<>(SidebarNode.forBox(branch.box()));
+        for (DocumentBranch docBranch : branch.documents()) {
+            boxItem.getChildren().add(buildDocumentItem(docBranch));
+        }
+        boxItem.setExpanded(true);
+        return boxItem;
+    }
+
+    private TreeItem<SidebarNode> buildDocumentItem(DocumentBranch docBranch) {
+        TreeItem<SidebarNode> docItem = new TreeItem<>(SidebarNode.forDocument(docBranch.document()));
+        for (File file : docBranch.files()) {
+            docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(file)));
+        }
+        docItem.setExpanded(true);
+        return docItem;
+    }
+
+    /**
+     * Called when the user clicks a node in the tree.
+     * Only File nodes trigger the viewer — clicking a Box or Document is
+     * just a navigation gesture (expand/collapse).
+     */
+    private void onSidebarSelectionChanged(TreeItem<SidebarNode> selected) {
+        if (selected == null || selected.getValue() == null) return;
+        SidebarNode node = selected.getValue();
+        if (node.kind() != SidebarNode.Kind.FILE) return;
+
+        loadAndDisplayFile(node.file());
+    }
+
+    /**
+     * Fetch TIFF bytes for the clicked file and show in the viewer.
+     * DB call runs on a background thread; UI update on FX thread.
+     */
+    private void loadAndDisplayFile(File file) {
+        viewerCaptionLabel.setText("Loading File #" + file.getReferenceId() + "...");
+
+        Thread worker = new Thread(() -> {
+            try {
+                byte[] tiffBytes = sidebarService.loadTiffData(file.getFileId());
+                if (tiffBytes == null || tiffBytes.length == 0) {
+                    Platform.runLater(() -> viewerCaptionLabel.setText(
+                            "File #" + file.getReferenceId() + " has no data."));
+                    return;
+                }
+                Image image = tiffImageLoader.load(tiffBytes);
+                Platform.runLater(() -> {
+                    pageImageView.setImage(image);
+                    pageImageView.setRotate(viewerRotationDegrees);
+                    viewerCaptionLabel.setText(
+                            "File #" + file.getReferenceId()
+                                    + " — Document " + file.getDocumentId());
+                });
+            } catch (SQLException | IOException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> viewerCaptionLabel.setText(
+                        "Could not load File #" + file.getReferenceId()
+                                + ": " + ex.getMessage()));
+            }
+        }, "sidebar-load-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Append a new file under its document branch in the sidebar. */
+    private void addFileToSidebar(File file) {
+        TreeItem<SidebarNode> docItem = findDocumentItem(file.getDocumentId());
+        if (docItem != null) {
+            docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(file)));
+            docItem.setExpanded(true);
+        }
+    }
+
+    /** Append a new (empty) document branch under its parent box. */
+    private void addDocumentToSidebar(Document doc) {
+        TreeItem<SidebarNode> boxItem = findBoxItem(doc.getBoxId());
+        if (boxItem != null) {
+            TreeItem<SidebarNode> docItem = new TreeItem<>(SidebarNode.forDocument(doc));
+            docItem.setExpanded(true);
+            boxItem.getChildren().add(docItem);
+        }
+    }
+
+    private TreeItem<SidebarNode> findBoxItem(int boxId) {
+        for (TreeItem<SidebarNode> boxItem : sidebarTree.getRoot().getChildren()) {
+            SidebarNode value = boxItem.getValue();
+            if (value != null && value.kind() == SidebarNode.Kind.BOX
+                    && value.box().getBoxId() == boxId) {
+                return boxItem;
+            }
+        }
+        return null;
+    }
+
+    private TreeItem<SidebarNode> findDocumentItem(int documentId) {
+        for (TreeItem<SidebarNode> boxItem : sidebarTree.getRoot().getChildren()) {
+            for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
+                SidebarNode value = docItem.getValue();
+                if (value != null && value.kind() == SidebarNode.Kind.DOCUMENT
+                        && value.document().getDocumentId() == documentId) {
+                    return docItem;
+                }
+            }
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------------
+    // Scan flow (unchanged from team's version, except for sidebar hooks)
+    // ---------------------------------------------------------------------
+
     @FXML
     private void onNewCommand() {
         try {
@@ -121,6 +305,17 @@ public class MainController {
         lastResultLabel.setText("Ready. Press Scan to fetch the next page.");
         viewerCaptionLabel.setText("No page to display yet");
         pageImageView.setImage(null);
+
+        // Add the new Box + first Document into the sidebar tree.
+        TreeItem<SidebarNode> boxItem = new TreeItem<>(
+                SidebarNode.forBox(activeSession.getBox()));
+        TreeItem<SidebarNode> firstDocItem = new TreeItem<>(
+                SidebarNode.forDocument(activeSession.getFirstDocument()));
+        firstDocItem.setExpanded(true);
+        boxItem.getChildren().add(firstDocItem);
+        boxItem.setExpanded(true);
+        sidebarTree.getRoot().getChildren().add(boxItem);
+
         System.out.println("Session started — Box id "
                 + activeSession.getBox().getBoxId()
                 + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
@@ -187,6 +382,7 @@ public class MainController {
                             "File #" + r.savedFile().getReferenceId()
                                     + " — Document " + r.savedFile().getDocumentId()
                     );
+                    addFileToSidebar(r.savedFile());
                 }
                 case DOCUMENT_SPLIT -> {
                     lastResultLabel.setText("Barcode \"" + r.barcodeValue()
@@ -201,6 +397,7 @@ public class MainController {
                                     + "] — Document #"
                                     + r.newDocument().getDocumentNumber() + " started"
                     );
+                    addDocumentToSidebar(r.newDocument());
                 }
             }
         }

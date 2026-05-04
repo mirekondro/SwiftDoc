@@ -9,17 +9,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data access for {@link Document}.
  *
- * Sprint 1: INSERT only.
- *
  * Schema: dbo.Documents (DocumentId, BoxId, BarcodeValue)
- *
- * Note: documentNumber is computed at runtime (COUNT(*) in the box) and
- * is not persisted. If the team later adds a DocumentNumber column for
- * audit/display, swap the COUNT for that.
  */
 public class DocumentDAO {
 
@@ -29,15 +25,10 @@ public class DocumentDAO {
     private static final String COUNT_IN_BOX =
             "SELECT COUNT(*) FROM dbo.Documents WHERE BoxId = ?";
 
-    /**
-     * Create a new document in the given box.
-     *
-     * @param boxId         parent box
-     * @param barcodeValue  barcode text from the separator that triggered this
-     *                      document, or null for the box's first document
-     * @return the persisted Document with DB-assigned DocumentId and computed
-     *         documentNumber (1-based within the box)
-     */
+    private static final String SELECT_BY_BOX =
+            "SELECT DocumentId, BoxId, BarcodeValue " +
+                    "FROM dbo.Documents WHERE BoxId = ? ORDER BY DocumentId";
+
     public Document create(int boxId, String barcodeValue) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection()) {
 
@@ -69,6 +60,32 @@ public class DocumentDAO {
 
             return new Document(newId, boxId, documentNumber, barcodeValue);
         }
+    }
+
+    /**
+     * @return all documents in the given box, ordered by DocumentId.
+     *         documentNumber is computed from row position (1-based).
+     */
+    public List<Document> getByBox(int boxId) throws SQLException {
+        List<Document> documents = new ArrayList<>();
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_BY_BOX)) {
+
+            stmt.setInt(1, boxId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                int positionInBox = 0;
+                while (rs.next()) {
+                    positionInBox++;
+                    documents.add(new Document(
+                            rs.getInt("DocumentId"),
+                            rs.getInt("BoxId"),
+                            positionInBox,
+                            rs.getString("BarcodeValue")
+                    ));
+                }
+            }
+        }
+        return documents;
     }
 
     private int countInBox(Connection conn, int boxId) throws SQLException {

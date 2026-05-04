@@ -49,7 +49,7 @@
 
                 <VBox spacing="8.0" prefWidth="260.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
                     <Label text="Scan Options" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
-                    <CheckBox fx:id="autoSplitCheckBox" text="Auto-split documents by barcode" selected="true"/>
+
                     <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable duplicate detection"/>
                     <CheckBox fx:id="separateDocumentsCheckBox" text="Create separate document per page" selected="false"/>
                 </VBox>
