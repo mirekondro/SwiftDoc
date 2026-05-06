@@ -48,10 +48,18 @@
 
     <Separator orientation="VERTICAL"/>
 
-    <!-- RIGHT COLUMN: viewer -->
+    <!-- RIGHT COLUMN: viewer (caption + rotate toolbar + image) -->
     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
         <Label fx:id="viewerCaptionLabel" text="No page to display yet"
                style="-fx-font-weight: bold;"/>
+
+        <!-- Rotate toolbar -->
+        <HBox spacing="6.0">
+            <Button text="⟲ Rotate left" onAction="#onRotateLeftCommand"/>
+            <Button text="⟳ Rotate right" onAction="#onRotateRightCommand"/>
+            <Button text="Reset" onAction="#onResetRotationCommand"/>
+        </HBox>
+
         <StackPane VBox.vgrow="ALWAYS"
                    style="-fx-background-color: #f0f0f0; -fx-border-color: #cccccc;">
             <ImageView fx:id="pageImageView"
@@ -59,7 +67,7 @@
                        pickOnBounds="true"
                        smooth="true"
                        fitWidth="500.0"
-                       fitHeight="580.0"/>
+                       fitHeight="540.0"/>
         </StackPane>
     </VBox>
 </HBox>

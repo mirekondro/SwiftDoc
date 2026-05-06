@@ -192,6 +192,23 @@ public class MainController {
         loadAndDisplayFile(node.file());
     }
 
+
+    @FXML
+    private void onRotateLeftCommand() {
+        rotateViewer(-90);
+    }
+
+    @FXML
+    private void onRotateRightCommand() {
+        rotateViewer(90);
+    }
+
+    @FXML
+    private void onResetRotationCommand() {
+        resetViewerRotation();
+    }
+
+
     /**
      * Fetch TIFF bytes for the clicked file and show in the viewer.
      * DB call runs on a background thread; UI update on FX thread.
