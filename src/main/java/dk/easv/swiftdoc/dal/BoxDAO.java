@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Data access for {@link Box}.
@@ -30,13 +31,6 @@ public class BoxDAO {
             "SELECT BoxId, BoxName, ProfileId, GlobalRotation " +
                     "FROM dbo.Boxes ORDER BY BoxId";
 
-    /**
-     * Create a new box.
-     *
-     * @param boxName    user-entered label
-     * @param profileId  FK to dbo.Profiles
-     * @return the persisted Box with DB-assigned BoxId
-     */
     public Box create(String boxName, int profileId) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement insert = conn.prepareStatement(
@@ -59,13 +53,10 @@ public class BoxDAO {
                 newId = keys.getInt(1);
             }
 
-            return fetchById(conn, newId);
+            return fetchByIdInternal(conn, newId);
         }
     }
 
-    /**
-     * @return all boxes ordered by BoxId. Used by the sidebar tree.
-     */
     public List<Box> getAll() throws SQLException {
         List<Box> boxes = new ArrayList<>();
         try (Connection conn = DBConnection.getInstance().getConnection();
@@ -79,7 +70,24 @@ public class BoxDAO {
         return boxes;
     }
 
-    private Box fetchById(Connection conn, int boxId) throws SQLException {
+    /**
+     * Fetch a box by its id.
+     *
+     * @return the box if found; empty if no row matches
+     */
+    public Optional<Box> getById(int boxId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_BY_ID)) {
+
+            stmt.setInt(1, boxId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) return Optional.empty();
+                return Optional.of(mapRow(rs));
+            }
+        }
+    }
+
+    private Box fetchByIdInternal(Connection conn, int boxId) throws SQLException {
         try (PreparedStatement select = conn.prepareStatement(SELECT_BY_ID)) {
             select.setInt(1, boxId);
             try (ResultSet rs = select.executeQuery()) {

@@ -26,6 +26,10 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
+import dk.easv.swiftdoc.service.ExportService;
+import dk.easv.swiftdoc.service.ExportService.ExportResult;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.Window;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -286,9 +290,6 @@ public class MainController {
         return null;
     }
 
-    // ---------------------------------------------------------------------
-    // Scan flow (unchanged from team's version, except for sidebar hooks)
-    // ---------------------------------------------------------------------
 
     @FXML
     private void onNewCommand() {
@@ -525,9 +526,75 @@ public class MainController {
         return "Could not complete the scan.\n\nDetails: " + ex.getMessage();
     }
 
+    private final ExportService exportService = new ExportService();
+
     @FXML
     private void onSaveCommand() {
-        // TODO: handle save command
+        if (activeSession == null) {
+            Alert info = new Alert(Alert.AlertType.INFORMATION);
+            info.setTitle("Nothing to save");
+            info.setHeaderText("No active session");
+            info.setContentText("Start a scan session first, then press Save to export "
+                    + "the box as multi-page TIFFs.");
+            info.showAndWait();
+            return;
+        }
+
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Choose export folder");
+        Window owner = root.getScene() != null ? root.getScene().getWindow() : null;
+        java.io.File outputDir = chooser.showDialog(owner);
+        if (outputDir == null) {
+            // User cancelled the folder picker.
+            return;
+        }
+
+        int boxId = activeSession.getBox().getBoxId();
+        lastResultLabel.setText("Exporting box #" + boxId + "...");
+
+        Thread worker = new Thread(() -> performExport(boxId, outputDir), "export-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void performExport(int boxId, java.io.File outputDir) {
+        try {
+            ExportResult result = exportService.exportBox(boxId, outputDir);
+            Platform.runLater(() -> showExportResult(result));
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            Platform.runLater(() -> {
+                lastResultLabel.setText("Export failed: " + ex.getMessage());
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Export failed");
+                alert.setHeaderText("Could not export the box");
+                alert.setContentText(ex.getClass().getSimpleName() + ": " + ex.getMessage());
+                alert.showAndWait();
+            });
+        }
+    }
+
+    private void showExportResult(ExportResult result) {
+        StringBuilder summary = new StringBuilder();
+        summary.append("Wrote ").append(result.filesWritten())
+                .append(" TIFF file(s) totalling ")
+                .append(result.pagesWritten()).append(" page(s)")
+                .append(" to:\n").append(result.outputDir());
+
+        if (!result.skipped().isEmpty()) {
+            summary.append("\n\nSkipped:");
+            for (String s : result.skipped()) {
+                summary.append("\n  • ").append(s);
+            }
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Export complete");
+        alert.setHeaderText("Box exported successfully");
+        alert.setContentText(summary.toString());
+        alert.showAndWait();
+
+        lastResultLabel.setText("Exported " + result.filesWritten() + " file(s).");
     }
 
     public ScanSession getActiveSession() {
