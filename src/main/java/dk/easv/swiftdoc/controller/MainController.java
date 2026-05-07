@@ -29,11 +29,9 @@ import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.Window;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -51,7 +49,7 @@ public class MainController {
     private double viewerRotationDegrees = 0.0;
     private TreeItem<SidebarNode> draggedTreeItem;
 
-    @FXML private HBox root;
+    @FXML private VBox root;
     @FXML private Button scanButton;
     @FXML private Label sessionInfoLabel;
     @FXML private Label counterLabel;
@@ -96,7 +94,7 @@ public class MainController {
 
         // Sidebar tree setup — invisible root, populated below.
         sidebarTree.setRoot(new TreeItem<>(null));
-        loadSidebarTree();
+        loadSidebarTreeAsync();
         configureSidebarDragAndDrop();
 
         sidebarTree.getSelectionModel().selectedItemProperty()
@@ -159,16 +157,41 @@ public class MainController {
     private void loadSidebarTree() {
         try {
             List<BoxBranch> branches = sidebarService.loadTree();
-            TreeItem<SidebarNode> root = sidebarTree.getRoot();
-            root.getChildren().clear();
-
-            for (BoxBranch branch : branches) {
-                root.getChildren().add(buildBoxItem(branch));
-            }
+            applySidebarTree(branches);
         } catch (SQLException ex) {
             ex.printStackTrace();
             sidebarTree.setRoot(new TreeItem<>(null));
             System.err.println("Could not load sidebar tree: " + ex.getMessage());
+        }
+    }
+
+    private void loadSidebarTreeAsync() {
+        if (lastResultLabel != null
+                && (lastResultLabel.getText() == null || lastResultLabel.getText().isBlank())) {
+            lastResultLabel.setText("Loading sidebar...");
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                List<BoxBranch> branches = sidebarService.loadTree();
+                Platform.runLater(() -> applySidebarTree(branches));
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    sidebarTree.setRoot(new TreeItem<>(null));
+                    System.err.println("Could not load sidebar tree: " + ex.getMessage());
+                });
+            }
+        }, "sidebar-load-tree");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void applySidebarTree(List<BoxBranch> branches) {
+        TreeItem<SidebarNode> root = sidebarTree.getRoot();
+        root.getChildren().clear();
+
+        for (BoxBranch branch : branches) {
+            root.getChildren().add(buildBoxItem(branch));
         }
     }
 
@@ -653,31 +676,93 @@ public class MainController {
 
     @FXML
     private void onSaveCommand() {
-        if (activeSession == null) {
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.setTitle("Nothing to save");
+        openExportDialog();
+    }
+
+    @FXML
+    private void onExportMenuCommand() {
+        openExportDialog();
+    }
+
+    private void openExportDialog() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    MainController.class.getResource("/dk/easv/swiftdoc/view/export-dialog.fxml"));
+            DialogPane dialogPane = loader.load();
+            ExportDialogController dialogController = loader.getController();
+
+            Dialog<?> dialog = new Dialog<>();
+            dialog.setDialogPane(dialogPane);
+            dialog.setTitle("Export");
+            dialog.showAndWait();
+
+            ExportDialogController.ExportRequest request = dialogController.getExportRequest();
+            if (request == null) {
+                return;
+            }
+
+            Integer boxId = resolveExportBoxId(request.mode());
+            if (boxId == null) {
+                showExportScopeError(request.mode());
+                return;
+            }
+
+            lastResultLabel.setText("Exporting box #" + boxId + "...");
+            Thread worker = new Thread(() -> performExport(boxId, request.outputDir()), "export-worker");
+            worker.setDaemon(true);
+            worker.start();
+        } catch (IOException ex) {
+            System.err.println("Failed to load export dialog: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
+    private Integer resolveExportBoxId(ExportDialogController.ExportMode mode) {
+        if (mode == null) {
+            return null;
+        }
+        return switch (mode) {
+            case ACTIVE_SESSION -> activeSession != null ? activeSession.getBox().getBoxId() : null;
+            case SELECTED_SIDEBAR -> resolveBoxIdFromSelection(
+                    sidebarTree.getSelectionModel().getSelectedItem());
+        };
+    }
+
+    private Integer resolveBoxIdFromSelection(TreeItem<SidebarNode> selectedItem) {
+        if (selectedItem == null || selectedItem.getValue() == null) {
+            return null;
+        }
+        SidebarNode node = selectedItem.getValue();
+        return switch (node.kind()) {
+            case BOX -> node.box().getBoxId();
+            case DOCUMENT -> node.document().getBoxId();
+            case FILE -> {
+                TreeItem<SidebarNode> docItem = selectedItem.getParent();
+                if (docItem != null && docItem.getValue() != null
+                        && docItem.getValue().kind() == SidebarNode.Kind.DOCUMENT) {
+                    yield docItem.getValue().document().getBoxId();
+                }
+                TreeItem<SidebarNode> boxItem = docItem != null ? docItem.getParent() : null;
+                if (boxItem != null && boxItem.getValue() != null
+                        && boxItem.getValue().kind() == SidebarNode.Kind.BOX) {
+                    yield boxItem.getValue().box().getBoxId();
+                }
+                yield null;
+            }
+        };
+    }
+
+    private void showExportScopeError(ExportDialogController.ExportMode mode) {
+        Alert info = new Alert(Alert.AlertType.INFORMATION);
+        info.setTitle("Nothing to export");
+        if (mode == ExportDialogController.ExportMode.ACTIVE_SESSION) {
             info.setHeaderText("No active session");
-            info.setContentText("Start a scan session first, then press Save to export "
-                    + "the box as multi-page TIFFs.");
-            info.showAndWait();
-            return;
+            info.setContentText("Start a scan session first, or choose the selected sidebar item.");
+        } else {
+            info.setHeaderText("No sidebar selection");
+            info.setContentText("Select a box, document, or file in the sidebar to export its box.");
         }
-
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("Choose export folder");
-        Window owner = root.getScene() != null ? root.getScene().getWindow() : null;
-        java.io.File outputDir = chooser.showDialog(owner);
-        if (outputDir == null) {
-            // User cancelled the folder picker.
-            return;
-        }
-
-        int boxId = activeSession.getBox().getBoxId();
-        lastResultLabel.setText("Exporting box #" + boxId + "...");
-
-        Thread worker = new Thread(() -> performExport(boxId, outputDir), "export-worker");
-        worker.setDaemon(true);
-        worker.start();
+        info.showAndWait();
     }
 
     private void performExport(int boxId, java.io.File outputDir) {

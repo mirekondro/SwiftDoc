@@ -2,6 +2,9 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TreeView?>
 <?import javafx.scene.image.ImageView?>
@@ -10,64 +13,72 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<HBox xmlns:fx="http://javafx.com/fxml"
+<VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="dk.easv.swiftdoc.controller.MainController"
       fx:id="root"
       onKeyPressed="#onKeyPressed"
       focusTraversable="true"
-      spacing="10.0" prefWidth="1100.0" prefHeight="650.0"
+      spacing="0.0" prefWidth="1100.0" prefHeight="650.0"
       style="-fx-padding: 10;">
 
-    <!-- LEFT COLUMN: controls + session info + shortcut cheat sheet -->
-    <VBox alignment="TOP_CENTER" spacing="10.0" prefWidth="220.0">
-        <Button text="New" onAction="#onNewCommand" maxWidth="Infinity"/>
-        <Button text="Save" onAction="#onSaveCommand" maxWidth="Infinity"/>
+    <MenuBar>
+        <Menu text="Export">
+            <MenuItem text="Export..." onAction="#onExportMenuCommand"/>
+        </Menu>
+    </MenuBar>
 
-        <Separator/>
+    <HBox spacing="10.0" VBox.vgrow="ALWAYS">
+        <!-- LEFT COLUMN: controls + session info + shortcut cheat sheet -->
+        <VBox alignment="TOP_CENTER" spacing="10.0" prefWidth="220.0">
+            <Button text="New" onAction="#onNewCommand" maxWidth="Infinity"/>
+            <Button text="Save" onAction="#onSaveCommand" maxWidth="Infinity"/>
 
-        <Button fx:id="scanButton" text="Scan" onAction="#onScanCommand"
-                disable="true" maxWidth="Infinity"/>
-        <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true"/>
-        <Label fx:id="counterLabel" text="Files scanned: 0"/>
-        <Label fx:id="lastResultLabel" text="" wrapText="true"/>
+            <Separator/>
 
-        <Separator/>
+            <Button fx:id="scanButton" text="Scan" onAction="#onScanCommand"
+                    disable="true" maxWidth="Infinity"/>
+            <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true"/>
+            <Label fx:id="counterLabel" text="Files scanned: 0"/>
+            <Label fx:id="lastResultLabel" text="" wrapText="true"/>
 
-        <Label text="Shortcuts" style="-fx-font-weight: bold;"/>
-        <Label text="F1  – New scan&#10;F2  – Scan&#10;Ctrl+R – Rotate right&#10;Ctrl+L – Rotate left&#10;Ctrl+0 – Reset rotation&#10;Ctrl+S – Save"
-               wrapText="true"/>
-    </VBox>
+            <Separator/>
 
-    <Separator orientation="VERTICAL"/>
+            <Label text="Shortcuts" style="-fx-font-weight: bold;"/>
+            <Label text="F1  – New scan&#10;F2  – Scan&#10;Ctrl+R – Rotate right&#10;Ctrl+L – Rotate left&#10;Ctrl+0 – Reset rotation&#10;Ctrl+S – Export"
+                   wrapText="true"/>
+        </VBox>
 
-    <!-- MIDDLE COLUMN: sidebar tree -->
-    <VBox spacing="6.0" prefWidth="260.0">
-        <Label text="All boxes" style="-fx-font-weight: bold;"/>
-        <TreeView fx:id="sidebarTree" VBox.vgrow="ALWAYS" showRoot="false"/>
-    </VBox>
+        <Separator orientation="VERTICAL"/>
 
-    <Separator orientation="VERTICAL"/>
+        <!-- MIDDLE COLUMN: sidebar tree -->
+        <VBox spacing="6.0" prefWidth="260.0">
+            <Label text="All boxes" style="-fx-font-weight: bold;"/>
+            <TreeView fx:id="sidebarTree" VBox.vgrow="ALWAYS" showRoot="false"/>
+        </VBox>
 
-    <!-- RIGHT COLUMN: viewer (caption + rotate toolbar + image) -->
-    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-        <Label fx:id="viewerCaptionLabel" text="No page to display yet"
-               style="-fx-font-weight: bold;"/>
+        <Separator orientation="VERTICAL"/>
 
-        <!-- Rotate toolbar -->
-        <HBox spacing="6.0">
-            <Button text="⟲ Rotate left" onAction="#onRotateLeftCommand"/>
-            <Button text="⟳ Rotate right" onAction="#onRotateRightCommand"/>
-            <Button text="Reset" onAction="#onResetRotationCommand"/>
-        </HBox>
+        <!-- RIGHT COLUMN: viewer (caption + rotate toolbar + image) -->
+        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+            <Label fx:id="viewerCaptionLabel" text="No page to display yet"
+                   style="-fx-font-weight: bold;"/>
 
-        <StackPane VBox.vgrow="ALWAYS"
-                   style="-fx-background-color: #f0f0f0; -fx-border-color: #cccccc;">
-            <ImageView fx:id="pageImageView"
-                       preserveRatio="true"
-                       pickOnBounds="true"
-                       smooth="true"
-                       fitWidth="500.0"
-                       fitHeight="540.0"/>
-        </StackPane>
-    </VBox>
-</HBox>
+            <!-- Rotate toolbar -->
+            <HBox spacing="6.0">
+                <Button text="⟲ Rotate left" onAction="#onRotateLeftCommand"/>
+                <Button text="⟳ Rotate right" onAction="#onRotateRightCommand"/>
+                <Button text="Reset" onAction="#onResetRotationCommand"/>
+            </HBox>
+
+            <StackPane VBox.vgrow="ALWAYS"
+                       style="-fx-background-color: #f0f0f0; -fx-border-color: #cccccc;">
+                <ImageView fx:id="pageImageView"
+                           preserveRatio="true"
+                           pickOnBounds="true"
+                           smooth="true"
+                           fitWidth="500.0"
+                           fitHeight="540.0"/>
+            </StackPane>
+        </VBox>
+    </HBox>
+</VBox>

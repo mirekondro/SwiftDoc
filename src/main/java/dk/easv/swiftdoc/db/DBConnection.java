@@ -52,6 +52,7 @@ public final class DBConnection {
             synchronized (this) {
                 if (connection == null || connection.isClosed()) {
                     connection = DriverManager.getConnection(url, username, password);
+                    DatabaseMigrator.migrate(connection);
                 }
             }
         }
