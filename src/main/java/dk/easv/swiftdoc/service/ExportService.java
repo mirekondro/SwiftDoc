@@ -114,7 +114,8 @@ public class ExportService {
                     continue;
                 }
                 BufferedImage decoded = decode(tiff);
-                BufferedImage rotated = rotate(decoded, file.getRotationAngle());
+                int combinedRotation = file.getRotationAngle() + box.getGlobalRotation();
+                BufferedImage rotated = rotate(decoded, combinedRotation);
                 pages.add(rotated);
             }
 
