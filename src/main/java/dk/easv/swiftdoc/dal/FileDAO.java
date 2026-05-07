@@ -83,6 +83,9 @@ public class FileDAO {
         }
     }
 
+    private static final String UPDATE_ROTATION_SQL =
+            "UPDATE dbo.Files SET RotationAngle = ? WHERE FileId = ?";
+
     /**
      * @return files in the document ordered by IncrementalId.
      *         The returned File objects have null tiffData (use getTiffData
@@ -128,6 +131,21 @@ public class FileDAO {
                 }
                 return rs.getBytes("TiffData");
             }
+        }
+    }
+
+    /**
+     * Update the rotation angle of a file.
+     *
+     * @param fileId        the ID of the file to update
+     * @param rotationAngle the new rotation angle
+     */
+    public void updateRotation(int fileId, int rotationAngle) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_ROTATION_SQL)) {
+            stmt.setInt(1, rotationAngle);
+            stmt.setInt(2, fileId);
+            stmt.executeUpdate();
         }
     }
 
