@@ -76,4 +76,11 @@ public class SidebarService {
     public byte[] loadTiffData(int fileId) throws SQLException {
         return fileDAO.getTiffData(fileId);
     }
+
+    /**
+     * Persist a new order of files inside a document.
+     */
+    public void updateFileOrder(int documentId, List<File> orderedFiles) throws SQLException {
+        fileDAO.updateIncrementalOrder(documentId, orderedFiles);
+    }
 }

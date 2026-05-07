@@ -86,6 +86,9 @@ public class FileDAO {
     private static final String UPDATE_ROTATION_SQL =
             "UPDATE dbo.Files SET RotationAngle = ? WHERE FileId = ?";
 
+    private static final String UPDATE_INCREMENTAL_SQL =
+            "UPDATE dbo.Files SET IncrementalId = ? WHERE FileId = ? AND DocumentId = ?";
+
     /**
      * @return files in the document ordered by IncrementalId.
      *         The returned File objects have null tiffData (use getTiffData
@@ -146,6 +149,39 @@ public class FileDAO {
             stmt.setInt(1, rotationAngle);
             stmt.setInt(2, fileId);
             stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Update the display order of files within a document.
+     *
+     * @param documentId the document containing the files
+     * @param orderedFiles files in the desired order (1-based incremental ids)
+     */
+    public void updateIncrementalOrder(int documentId, List<File> orderedFiles) throws SQLException {
+        if (orderedFiles == null || orderedFiles.isEmpty()) {
+            return;
+        }
+
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_INCREMENTAL_SQL)) {
+            conn.setAutoCommit(false);
+            try {
+                int incrementalId = 1;
+                for (File file : orderedFiles) {
+                    stmt.setInt(1, incrementalId++);
+                    stmt.setInt(2, file.getFileId());
+                    stmt.setInt(3, documentId);
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         }
     }
 

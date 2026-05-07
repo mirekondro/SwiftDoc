@@ -11,4 +11,5 @@ module dk.easv.swiftdoc {
     opens dk.easv.swiftdoc.app to javafx.graphics;
     opens dk.easv.swiftdoc.controller to javafx.fxml;
     exports dk.easv.swiftdoc;
+    exports dk.easv.swiftdoc.db;
 }

@@ -19,12 +19,16 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
@@ -33,6 +37,7 @@ import javafx.stage.Window;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,6 +49,7 @@ public class MainController {
 
     private ScanSession activeSession;
     private double viewerRotationDegrees = 0.0;
+    private TreeItem<SidebarNode> draggedTreeItem;
 
     @FXML private HBox root;
     @FXML private Button scanButton;
@@ -91,6 +97,7 @@ public class MainController {
         // Sidebar tree setup — invisible root, populated below.
         sidebarTree.setRoot(new TreeItem<>(null));
         loadSidebarTree();
+        configureSidebarDragAndDrop();
 
         sidebarTree.getSelectionModel().selectedItemProperty()
                 .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
@@ -163,6 +170,142 @@ public class MainController {
             sidebarTree.setRoot(new TreeItem<>(null));
             System.err.println("Could not load sidebar tree: " + ex.getMessage());
         }
+    }
+
+    private void configureSidebarDragAndDrop() {
+        sidebarTree.setCellFactory(treeView -> {
+            TreeCell<SidebarNode> cell = new TreeCell<>() {
+                @Override
+                protected void updateItem(SidebarNode item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? null : item.toString());
+                    setGraphic(null);
+                }
+            };
+
+            cell.setOnDragDetected(event -> {
+                TreeItem<SidebarNode> item = cell.getTreeItem();
+                if (!isFileItem(item)) {
+                    return;
+                }
+                Dragboard dragboard = cell.startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.putString(Integer.toString(item.getValue().file().getFileId()));
+                dragboard.setContent(content);
+                draggedTreeItem = item;
+                event.consume();
+            });
+
+            cell.setOnDragOver(event -> {
+                if (draggedTreeItem == null) {
+                    return;
+                }
+                TreeItem<SidebarNode> target = cell.getTreeItem();
+                if (isValidDropTarget(draggedTreeItem, target)) {
+                    event.acceptTransferModes(TransferMode.MOVE);
+                }
+                event.consume();
+            });
+
+            cell.setOnDragDropped(event -> {
+                if (draggedTreeItem == null) {
+                    return;
+                }
+                TreeItem<SidebarNode> target = cell.getTreeItem();
+                boolean completed = false;
+                if (isValidDropTarget(draggedTreeItem, target)) {
+                    completed = moveDraggedFile(target);
+                }
+                event.setDropCompleted(completed);
+                event.consume();
+            });
+
+            cell.setOnDragDone(event -> draggedTreeItem = null);
+            return cell;
+        });
+    }
+
+    private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
+        if (!isFileItem(dragged) || target == null || target == dragged) {
+            return false;
+        }
+        if (isFileItem(target)) {
+            return target.getParent() == dragged.getParent();
+        }
+        return isDocumentItem(target) && target == dragged.getParent();
+    }
+
+    private boolean moveDraggedFile(TreeItem<SidebarNode> target) {
+        TreeItem<SidebarNode> documentItem = draggedTreeItem.getParent();
+        if (!isDocumentItem(documentItem)) {
+            return false;
+        }
+
+        List<TreeItem<SidebarNode>> siblings = documentItem.getChildren();
+        int draggedIndex = siblings.indexOf(draggedTreeItem);
+        int dropIndex = isFileItem(target) ? siblings.indexOf(target) : siblings.size();
+
+        if (draggedIndex < 0 || dropIndex < 0) {
+            return false;
+        }
+        if (draggedIndex < dropIndex) {
+            dropIndex--;
+        }
+        if (draggedIndex == dropIndex) {
+            return true;
+        }
+
+        siblings.remove(draggedTreeItem);
+        siblings.add(dropIndex, draggedTreeItem);
+        persistDocumentOrderAsync(documentItem);
+        return true;
+    }
+
+    private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
+        List<File> orderedFiles = new ArrayList<>();
+        int incrementalId = 1;
+        for (TreeItem<SidebarNode> fileItem : documentItem.getChildren()) {
+            SidebarNode node = fileItem.getValue();
+            if (node != null && node.kind() == SidebarNode.Kind.FILE) {
+                File file = node.file();
+                file.setIncrementalId(incrementalId++);
+                orderedFiles.add(file);
+            }
+        }
+
+        if (orderedFiles.isEmpty()) {
+            return;
+        }
+
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.updateFileOrder(
+                        documentItem.getValue().document().getDocumentId(),
+                        orderedFiles);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    loadSidebarTree();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Reorder failed");
+                    alert.setHeaderText("Could not save file order");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-reorder-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private boolean isFileItem(TreeItem<SidebarNode> item) {
+        return item != null && item.getValue() != null
+                && item.getValue().kind() == SidebarNode.Kind.FILE;
+    }
+
+    private boolean isDocumentItem(TreeItem<SidebarNode> item) {
+        return item != null && item.getValue() != null
+                && item.getValue().kind() == SidebarNode.Kind.DOCUMENT;
     }
 
     private TreeItem<SidebarNode> buildBoxItem(BoxBranch branch) {
