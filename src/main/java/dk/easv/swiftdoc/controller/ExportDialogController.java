@@ -1,14 +1,14 @@
 package dk.easv.swiftdoc.controller;
 
-import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleGroup;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
@@ -37,7 +37,9 @@ public class ExportDialogController {
     private ExportRequest exportRequest;
 
     @FXML private DialogPane dialogPane;
-    @FXML private ComboBox<ExportMode> modeComboBox;
+    @FXML private ToggleGroup modeToggleGroup;
+    @FXML private RadioButton activeSessionRadio;
+    @FXML private RadioButton selectedSidebarRadio;
     @FXML private TextField folderTextField;
     @FXML private Label folderErrorLabel;
     @FXML private Label modeHintLabel;
@@ -47,12 +49,13 @@ public class ExportDialogController {
 
     @FXML
     private void initialize() {
-        modeComboBox.setItems(FXCollections.observableArrayList(ExportMode.values()));
-        modeComboBox.getSelectionModel().select(ExportMode.ACTIVE_SESSION);
-        updateModeHint(modeComboBox.getValue());
+        activeSessionRadio.setUserData(ExportMode.ACTIVE_SESSION);
+        selectedSidebarRadio.setUserData(ExportMode.SELECTED_SIDEBAR);
+        activeSessionRadio.setSelected(true);
+        updateModeHint(ExportMode.ACTIVE_SESSION);
 
-        modeComboBox.valueProperty().addListener((obs, oldVal, newVal) -> {
-            updateModeHint(newVal);
+        modeToggleGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            updateModeHint(getSelectedMode());
             refreshExportEnabled();
         });
 
@@ -82,7 +85,7 @@ public class ExportDialogController {
     private void onExport(ActionEvent event) {
         exportRequest = null;
 
-        ExportMode mode = modeComboBox.getValue();
+        ExportMode mode = getSelectedMode();
         File outputDir = resolveOutputDir();
         if (mode == null || outputDir == null) {
             updateFolderError();
@@ -120,7 +123,7 @@ public class ExportDialogController {
         if (exportBtn == null) {
             return;
         }
-        exportBtn.setDisable(modeComboBox.getValue() == null || resolveOutputDir() == null);
+        exportBtn.setDisable(getSelectedMode() == null || resolveOutputDir() == null);
     }
 
     private void updateModeHint(ExportMode mode) {
@@ -135,8 +138,15 @@ public class ExportDialogController {
         }
     }
 
+    private ExportMode getSelectedMode() {
+        if (modeToggleGroup.getSelectedToggle() == null) {
+            return null;
+        }
+        Object value = modeToggleGroup.getSelectedToggle().getUserData();
+        return value instanceof ExportMode ? (ExportMode) value : null;
+    }
+
     public ExportRequest getExportRequest() {
         return exportRequest;
     }
 }
-
