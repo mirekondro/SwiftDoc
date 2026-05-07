@@ -17,17 +17,24 @@ public class ScanningProfile {
     private String splitRule;
     private int clientId;
     private String clientName;
+    private boolean duplicateDetectionEnabled;
 
     public ScanningProfile(int profileId, String profileName, String splitRule) {
-        this(profileId, profileName, splitRule, 0, "Unknown");
+        this(profileId, profileName, splitRule, 0, "Unknown", false);
     }
 
     public ScanningProfile(int profileId, String profileName, String splitRule, int clientId, String clientName) {
+        this(profileId, profileName, splitRule, clientId, clientName, false);
+    }
+
+    public ScanningProfile(int profileId, String profileName, String splitRule,
+                           int clientId, String clientName, boolean duplicateDetectionEnabled) {
         this.profileId = profileId;
         this.profileName = profileName;
         this.splitRule = splitRule;
         this.clientId = clientId;
         this.clientName = clientName;
+        this.duplicateDetectionEnabled = duplicateDetectionEnabled;
     }
 
     public int getProfileId() {
@@ -68,6 +75,14 @@ public class ScanningProfile {
 
     public void setClientName(String clientName) {
         this.clientName = clientName;
+    }
+
+    public boolean isDuplicateDetectionEnabled() {
+        return duplicateDetectionEnabled;
+    }
+
+    public void setDuplicateDetectionEnabled(boolean duplicateDetectionEnabled) {
+        this.duplicateDetectionEnabled = duplicateDetectionEnabled;
     }
 
     /** ComboBox renders items via toString(). */

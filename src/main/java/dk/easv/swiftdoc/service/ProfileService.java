@@ -29,14 +29,16 @@ public class ProfileService {
         return clientDAO.getAll();
     }
 
-    public ScanningProfile createProfile(String profileName, Client client) throws SQLException {
+    public ScanningProfile createProfile(String profileName, Client client,
+                                         boolean duplicateDetectionEnabled) throws SQLException {
         if (client == null) {
             throw new IllegalArgumentException("Client is required.");
         }
         if (profileName == null || profileName.isBlank()) {
             throw new IllegalArgumentException("Profile name cannot be empty.");
         }
-        return profileDAO.create(profileName.trim(), client.getClientId(), null);
+        return profileDAO.create(profileName.trim(), client.getClientId(), null,
+                duplicateDetectionEnabled);
     }
-}
 
+}

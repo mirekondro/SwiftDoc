@@ -21,19 +21,22 @@ import java.util.Optional;
 public class ProfileDAO {
 
     private static final String SELECT_ALL =
-            "SELECT p.ProfileId, p.ProfileName, p.SplitRule, c.ClientId, c.ClientName "
+            "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
+                    + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
                     + "ORDER BY c.ClientName, p.ProfileName";
 
     private static final String SELECT_BY_ID =
-            "SELECT p.ProfileId, p.ProfileName, p.SplitRule, c.ClientId, c.ClientName "
+            "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
+                    + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
                     + "WHERE p.ProfileId = ?";
 
     private static final String INSERT_PROFILE =
-            "INSERT INTO dbo.Profiles (ProfileName, ClientId, SplitRule) VALUES (?, ?, ?)";
+            "INSERT INTO dbo.Profiles (ProfileName, ClientId, SplitRule, DuplicateDetectionEnabled) "
+                    + "VALUES (?, ?, ?, ?)";
 
     public List<ScanningProfile> getAll() throws SQLException {
         List<ScanningProfile> profiles = new ArrayList<>();
@@ -65,13 +68,15 @@ public class ProfileDAO {
         }
     }
 
-    public ScanningProfile create(String profileName, int clientId, String splitRule) throws SQLException {
+    public ScanningProfile create(String profileName, int clientId, String splitRule,
+                                  boolean duplicateDetectionEnabled) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(INSERT_PROFILE, Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setString(1, profileName);
             stmt.setInt(2, clientId);
             stmt.setString(3, splitRule);
+            stmt.setBoolean(4, duplicateDetectionEnabled);
 
             stmt.executeUpdate();
 
@@ -81,7 +86,8 @@ public class ProfileDAO {
                     // ClientName left null here — the create flow doesn't need
                     // it, and the dialog refresh will reload via getAll() which
                     // does the JOIN and fills it in.
-                    return new ScanningProfile(profileId, profileName, splitRule, clientId, null);
+                    return new ScanningProfile(profileId, profileName, splitRule, clientId, null,
+                            duplicateDetectionEnabled);
                 }
             }
         }
@@ -94,7 +100,8 @@ public class ProfileDAO {
                 rs.getString("ProfileName"),
                 rs.getString("SplitRule"),
                 rs.getInt("ClientId"),
-                rs.getString("ClientName")
+                rs.getString("ClientName"),
+                rs.getBoolean("DuplicateDetectionEnabled")
         );
     }
 }

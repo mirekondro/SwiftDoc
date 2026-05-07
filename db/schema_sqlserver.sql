@@ -34,6 +34,7 @@ BEGIN
         ProfileId INT IDENTITY(1,1) PRIMARY KEY,
         ProfileName NVARCHAR(150) NOT NULL,
         SplitRule NVARCHAR(255) NULL,
+        DuplicateDetectionEnabled BIT NOT NULL DEFAULT 0,
         ClientId INT NOT NULL,
         CONSTRAINT FK_Profiles_Clients
             FOREIGN KEY (ClientId) REFERENCES dbo.Clients(ClientId)
@@ -45,6 +46,12 @@ BEGIN
     IF COL_LENGTH('dbo.Profiles', 'SplitRule') IS NULL
     BEGIN
         ALTER TABLE dbo.Profiles ADD SplitRule NVARCHAR(255) NULL;
+    END;
+
+    -- Add missing DuplicateDetectionEnabled column
+    IF COL_LENGTH('dbo.Profiles', 'DuplicateDetectionEnabled') IS NULL
+    BEGIN
+        ALTER TABLE dbo.Profiles ADD DuplicateDetectionEnabled BIT NOT NULL DEFAULT 0;
     END;
 
     -- Add missing ClientId column as NULL first

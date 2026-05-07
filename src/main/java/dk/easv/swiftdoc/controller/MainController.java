@@ -80,7 +80,7 @@ public class MainController {
         @Override
         public String toString() {
             return switch (kind) {
-                case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId() + " — " + box.getBoxName();
+                case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId();
                 case DOCUMENT -> "\uD83D\uDCC4 Document #" + document.getDocumentNumber()
                         + (document.getBarcodeValue() != null
                         ? " [" + document.getBarcodeValue() + "]"
@@ -582,8 +582,7 @@ public class MainController {
 
     private void refreshSessionLabels() {
         sessionInfoLabel.setText(
-                "Box #" + activeSession.getBox().getBoxId() + " "
-                        + "(" + activeSession.getBox().getBoxName() + ")\n"
+                "Box #" + activeSession.getBox().getBoxId() + "\n"
                         + "Current document: #"
                         + activeSession.getCurrentDocument().getDocumentNumber());
         counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());

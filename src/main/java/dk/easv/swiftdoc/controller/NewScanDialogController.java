@@ -45,7 +45,6 @@ public class NewScanDialogController {
     @FXML private Label profileDescriptionLabel;
     @FXML private TextField boxNameTextField;
     @FXML private Label boxNameErrorLabel;
-    @FXML private CheckBox autoSplitCheckBox;
     @FXML private CheckBox duplicateDetectionCheckBox;
     @FXML private CheckBox separateDocumentsCheckBox;
     @FXML private TextArea notesTextArea;
@@ -93,8 +92,11 @@ public class NewScanDialogController {
             ComboBox<Client> clientBox = new ComboBox<>(FXCollections.observableArrayList(clients));
             clientBox.setPromptText("Select client");
 
+            CheckBox duplicateCheckBox = new CheckBox("Enable duplicate detection");
+
             VBox content = new VBox(8.0, new Label("Profile Name"), nameField,
-                    new Label("Client"), clientBox);
+                    new Label("Client"), clientBox,
+                    duplicateCheckBox);
             pane.setContent(content);
 
             ButtonType create = new ButtonType("Create", ButtonType.OK.getButtonData());
@@ -108,7 +110,8 @@ public class NewScanDialogController {
                 if (result == create) {
                     try {
                         ScanningProfile created = profileService.createProfile(
-                                nameField.getText(), clientBox.getValue());
+                                nameField.getText(), clientBox.getValue(),
+                                duplicateCheckBox.isSelected());
                         loadProfiles();
                         profileComboBox.getSelectionModel().select(created);
                     } catch (SQLException | IllegalArgumentException ex) {
@@ -126,13 +129,19 @@ public class NewScanDialogController {
                 .addListener((obs, oldVal, newVal) -> {
                     if (newVal == null) {
                         profileDescriptionLabel.setText("Profile details will appear here");
+                        duplicateDetectionCheckBox.setSelected(false);
                     } else {
-                        // ScanningProfile now has SplitRule (was: description)
+                        StringBuilder description = new StringBuilder();
+                        description.append("Client: ")
+                                .append(newVal.getClientName() == null ? "(unknown)" : newVal.getClientName());
                         String rule = newVal.getSplitRule();
-                        profileDescriptionLabel.setText(
-                                (rule == null || rule.isBlank())
-                                        ? "(no split rule configured)"
-                                        : rule);
+                        if (rule != null && !rule.isBlank()) {
+                            description.append("\nRule: ").append(rule);
+                        }
+                        description.append("\nDuplicate detection: ")
+                                .append(newVal.isDuplicateDetectionEnabled() ? "Enabled" : "Disabled");
+                        profileDescriptionLabel.setText(description.toString());
+                        duplicateDetectionCheckBox.setSelected(newVal.isDuplicateDetectionEnabled());
                     }
                     refreshStartEnabled();
                 });
@@ -160,6 +169,7 @@ public class NewScanDialogController {
             onPreview();
         });
 
+        duplicateDetectionCheckBox.setDisable(true);
         refreshStartEnabled();
     }
 
@@ -207,9 +217,10 @@ public class NewScanDialogController {
                 .append((boxName == null || boxName.isBlank()) ? "(empty)" : boxName.trim())
                 .append("\n\n");
         summary.append("Options:\n");
-        summary.append("  Auto-split by barcode: ").append(autoSplitCheckBox.isSelected()).append("\n");
-        summary.append("  Duplicate detection:   ").append(duplicateDetectionCheckBox.isSelected()).append("\n");
-        summary.append("  Separate document per page: ").append(separateDocumentsCheckBox.isSelected()).append("\n");
+        summary.append("  Duplicate detection:   ")
+                .append(profile != null && profile.isDuplicateDetectionEnabled()).append("\n");
+        summary.append("  Separate document per page: ")
+                .append(separateDocumentsCheckBox.isSelected()).append("\n");
         if (notes != null && !notes.isBlank()) {
             summary.append("\nNotes:\n").append(notes.trim());
         }

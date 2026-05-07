@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS scanning_profiles (
     profile_name VARCHAR(150) NOT NULL,
     description TEXT,
     barcode_split_rule VARCHAR(255),
+    duplicate_detection_enabled TINYINT(1) NOT NULL DEFAULT 0,
     client_id INT NOT NULL,
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

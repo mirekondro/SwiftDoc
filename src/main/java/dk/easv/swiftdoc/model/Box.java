@@ -61,6 +61,6 @@ public class Box {
 
     @Override
     public String toString() {
-        return boxName;
+        return "Box #" + boxId;
     }
 }
