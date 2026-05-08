@@ -377,39 +377,97 @@ public class MainController {
         if (!isFileItem(dragged) || target == null || target == dragged) {
             return false;
         }
-        if (isFileItem(target)) {
-            return target.getParent() == dragged.getParent();
+        TreeItem<SidebarNode> sourceDoc = dragged.getParent();
+        if (!isDocumentItem(sourceDoc)) {
+            return false;
         }
-        return isDocumentItem(target) && target == dragged.getParent();
+        TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+        if (!isDocumentItem(targetDoc)) {
+            return false;
+        }
+        if (sourceDoc == targetDoc) {
+            return true;
+        }
+        return isSameBox(sourceDoc, targetDoc);
     }
 
     private boolean moveDraggedFile(TreeItem<SidebarNode> target) {
-        TreeItem<SidebarNode> documentItem = draggedTreeItem.getParent();
-        if (!isDocumentItem(documentItem)) {
+        TreeItem<SidebarNode> sourceDocItem = draggedTreeItem.getParent();
+        if (!isDocumentItem(sourceDocItem)) {
+            return false;
+        }
+        TreeItem<SidebarNode> targetDocItem = resolveTargetDocument(target);
+        if (!isDocumentItem(targetDocItem)) {
             return false;
         }
 
-        List<TreeItem<SidebarNode>> siblings = documentItem.getChildren();
-        int draggedIndex = siblings.indexOf(draggedTreeItem);
-        int dropIndex = isFileItem(target) ? siblings.indexOf(target) : siblings.size();
+        if (sourceDocItem == targetDocItem) {
+            List<TreeItem<SidebarNode>> siblings = sourceDocItem.getChildren();
+            int draggedIndex = siblings.indexOf(draggedTreeItem);
+            int dropIndex = isFileItem(target) ? siblings.indexOf(target) : siblings.size();
 
-        if (draggedIndex < 0 || dropIndex < 0) {
-            return false;
-        }
-        if (draggedIndex < dropIndex) {
-            dropIndex--;
-        }
-        if (draggedIndex == dropIndex) {
+            if (draggedIndex < 0 || dropIndex < 0) {
+                return false;
+            }
+            if (draggedIndex < dropIndex) {
+                dropIndex--;
+            }
+            if (draggedIndex == dropIndex) {
+                return true;
+            }
+
+            siblings.remove(draggedTreeItem);
+            siblings.add(dropIndex, draggedTreeItem);
+            persistDocumentOrderAsync(sourceDocItem);
             return true;
         }
 
-        siblings.remove(draggedTreeItem);
-        siblings.add(dropIndex, draggedTreeItem);
-        persistDocumentOrderAsync(documentItem);
+        List<TreeItem<SidebarNode>> sourceSiblings = sourceDocItem.getChildren();
+        List<TreeItem<SidebarNode>> targetSiblings = targetDocItem.getChildren();
+        int draggedIndex = sourceSiblings.indexOf(draggedTreeItem);
+        int dropIndex = isFileItem(target) ? targetSiblings.indexOf(target) : targetSiblings.size();
+
+        if (draggedIndex < 0) {
+            return false;
+        }
+        if (dropIndex < 0) {
+            dropIndex = targetSiblings.size();
+        }
+
+        sourceSiblings.remove(draggedTreeItem);
+        targetSiblings.add(dropIndex, draggedTreeItem);
+
+        File movedFile = draggedTreeItem.getValue().file();
+        movedFile.setDocumentId(targetDocItem.getValue().document().getDocumentId());
+        persistCrossDocumentMoveAsync(sourceDocItem, targetDocItem, movedFile);
         return true;
     }
 
-    private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
+    private TreeItem<SidebarNode> resolveTargetDocument(TreeItem<SidebarNode> target) {
+        if (isDocumentItem(target)) {
+            return target;
+        }
+        if (isFileItem(target)) {
+            return target.getParent();
+        }
+        return null;
+    }
+
+    private boolean isSameBox(TreeItem<SidebarNode> sourceDocItem, TreeItem<SidebarNode> targetDocItem) {
+        TreeItem<SidebarNode> sourceBox = sourceDocItem != null ? sourceDocItem.getParent() : null;
+        TreeItem<SidebarNode> targetBox = targetDocItem != null ? targetDocItem.getParent() : null;
+        if (sourceBox == null || targetBox == null) {
+            return false;
+        }
+        SidebarNode sourceValue = sourceBox.getValue();
+        SidebarNode targetValue = targetBox.getValue();
+        return sourceValue != null && targetValue != null
+                && sourceValue.kind() == SidebarNode.Kind.BOX
+                && targetValue.kind() == SidebarNode.Kind.BOX
+                && sourceValue.box().getBoxId() == targetValue.box().getBoxId();
+    }
+
+    private List<File> collectOrderedFiles(TreeItem<SidebarNode> documentItem) {
         List<File> orderedFiles = new ArrayList<>();
         int incrementalId = 1;
         for (TreeItem<SidebarNode> fileItem : documentItem.getChildren()) {
@@ -420,6 +478,11 @@ public class MainController {
                 orderedFiles.add(file);
             }
         }
+        return orderedFiles;
+    }
+
+    private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
+        List<File> orderedFiles = collectOrderedFiles(documentItem);
 
         if (orderedFiles.isEmpty()) {
             return;
@@ -442,6 +505,36 @@ public class MainController {
                 });
             }
         }, "sidebar-reorder-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void persistCrossDocumentMoveAsync(TreeItem<SidebarNode> sourceDocItem,
+                                              TreeItem<SidebarNode> targetDocItem,
+                                              File movedFile) {
+        List<File> sourceOrdered = collectOrderedFiles(sourceDocItem);
+        List<File> targetOrdered = collectOrderedFiles(targetDocItem);
+
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.moveFileAcrossDocuments(
+                        movedFile.getFileId(),
+                        sourceDocItem.getValue().document().getDocumentId(),
+                        targetDocItem.getValue().document().getDocumentId(),
+                        sourceOrdered,
+                        targetOrdered);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    loadSidebarTree();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Move failed");
+                    alert.setHeaderText("Could not move file");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-move-worker");
         worker.setDaemon(true);
         worker.start();
     }

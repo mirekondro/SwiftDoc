@@ -90,4 +90,13 @@ public class SidebarService {
     public void updateDocumentStatus(int documentId, Document.Status status) throws SQLException {
         documentDAO.updateStatus(documentId, status);
     }
+
+    /**
+     * Move a file between documents and persist ordering for both documents.
+     */
+    public void moveFileAcrossDocuments(int fileId, int fromDocumentId, int toDocumentId,
+                                        List<File> sourceOrder, List<File> targetOrder)
+            throws SQLException {
+        fileDAO.moveFile(fileId, fromDocumentId, toDocumentId, sourceOrder, targetOrder);
+    }
 }

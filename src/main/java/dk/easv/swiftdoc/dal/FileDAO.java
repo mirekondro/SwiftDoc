@@ -89,6 +89,9 @@ public class FileDAO {
     private static final String UPDATE_INCREMENTAL_SQL =
             "UPDATE dbo.Files SET IncrementalId = ? WHERE FileId = ? AND DocumentId = ?";
 
+    private static final String UPDATE_DOCUMENT_SQL =
+            "UPDATE dbo.Files SET DocumentId = ? WHERE FileId = ?";
+
     /**
      * @return files in the document ordered by IncrementalId.
      *         The returned File objects have null tiffData (use getTiffData
@@ -182,6 +185,50 @@ public class FileDAO {
             } finally {
                 conn.setAutoCommit(true);
             }
+        }
+    }
+
+    /**
+     * Move a file to a new document and update ordering for both documents.
+     */
+    public void moveFile(int fileId, int fromDocumentId, int toDocumentId,
+                         List<File> sourceOrder, List<File> targetOrder) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement updateDoc = conn.prepareStatement(UPDATE_DOCUMENT_SQL)) {
+                updateDoc.setInt(1, toDocumentId);
+                updateDoc.setInt(2, fileId);
+                int rows = updateDoc.executeUpdate();
+                if (rows != 1) {
+                    throw new SQLException("Expected 1 row updated, got " + rows);
+                }
+
+                updateIncrementalOrder(conn, fromDocumentId, sourceOrder);
+                updateIncrementalOrder(conn, toDocumentId, targetOrder);
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    private void updateIncrementalOrder(Connection conn, int documentId, List<File> orderedFiles)
+            throws SQLException {
+        if (orderedFiles == null || orderedFiles.isEmpty()) {
+            return;
+        }
+        try (PreparedStatement stmt = conn.prepareStatement(UPDATE_INCREMENTAL_SQL)) {
+            int incrementalId = 1;
+            for (File file : orderedFiles) {
+                stmt.setInt(1, incrementalId++);
+                stmt.setInt(2, file.getFileId());
+                stmt.setInt(3, documentId);
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
         }
     }
 
