@@ -29,6 +29,7 @@ import javafx.scene.input.Dragboard;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
@@ -36,8 +37,10 @@ import dk.easv.swiftdoc.service.ExportService.ExportResult;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public class MainController {
 
@@ -198,11 +201,23 @@ public class MainController {
     private void configureSidebarDragAndDrop() {
         sidebarTree.setCellFactory(treeView -> {
             TreeCell<SidebarNode> cell = new TreeCell<>() {
+                private final Label textLabel = new Label();
+                private final Label badgeLabel = new Label();
+                private final HBox container = new HBox(6, textLabel, badgeLabel);
+
                 @Override
                 protected void updateItem(SidebarNode item, boolean empty) {
                     super.updateItem(item, empty);
-                    setText(empty || item == null ? null : item.toString());
-                    setGraphic(null);
+                    if (empty || item == null) {
+                        setText(null);
+                        setGraphic(null);
+                        return;
+                    }
+                    textLabel.setText(item.toString());
+                    RenderStatus status = getRenderStatus(item, getTreeItem());
+                    applyBadge(badgeLabel, status);
+                    setText(null);
+                    setGraphic(container);
                 }
             };
 
@@ -246,6 +261,60 @@ public class MainController {
             cell.setOnDragDone(event -> draggedTreeItem = null);
             return cell;
         });
+    }
+
+    private enum RenderStatus {
+        RENDERED("Rendered", "#2e7d32"),
+        NOT_RENDERED("Not rendered", "#6b7280");
+
+        private final String label;
+        private final String color;
+
+        RenderStatus(String label, String color) {
+            this.label = label;
+            this.color = color;
+        }
+    }
+
+    private RenderStatus getRenderStatus(SidebarNode node, TreeItem<SidebarNode> treeItem) {
+        if (node == null || node.kind() == null) {
+            return RenderStatus.NOT_RENDERED;
+        }
+        return switch (node.kind()) {
+            case FILE -> renderedDocumentIds.contains(node.file().getDocumentId())
+                    ? RenderStatus.RENDERED
+                    : RenderStatus.NOT_RENDERED;
+            case DOCUMENT -> renderedDocumentIds.contains(node.document().getDocumentId())
+                    ? RenderStatus.RENDERED
+                    : RenderStatus.NOT_RENDERED;
+            case BOX -> isBoxRendered(treeItem) ? RenderStatus.RENDERED : RenderStatus.NOT_RENDERED;
+        };
+    }
+
+    private boolean isBoxRendered(TreeItem<SidebarNode> boxItem) {
+        if (boxItem == null || boxItem.getChildren().isEmpty()) {
+            return false;
+        }
+        for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
+            SidebarNode value = docItem.getValue();
+            if (value == null || value.kind() != SidebarNode.Kind.DOCUMENT) {
+                continue;
+            }
+            if (!renderedDocumentIds.contains(value.document().getDocumentId())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void applyBadge(Label badgeLabel, RenderStatus status) {
+        if (badgeLabel == null || status == null) {
+            return;
+        }
+        badgeLabel.setText(status.label);
+        badgeLabel.setStyle("-fx-background-color: " + status.color
+                + "; -fx-text-fill: white; -fx-padding: 2 6 2 6;"
+                + " -fx-background-radius: 8; -fx-font-size: 10px;");
     }
 
     private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
@@ -673,6 +742,7 @@ public class MainController {
     }
 
     private final ExportService exportService = new ExportService();
+    private final Set<Integer> renderedDocumentIds = new HashSet<>();
 
     @FXML
     private void onSaveCommand() {
@@ -783,6 +853,11 @@ public class MainController {
     }
 
     private void showExportResult(ExportResult result) {
+        if (result != null && result.exportedDocumentIds() != null) {
+            renderedDocumentIds.addAll(result.exportedDocumentIds());
+            sidebarTree.refresh();
+        }
+
         StringBuilder summary = new StringBuilder();
         summary.append("Wrote ").append(result.filesWritten())
                 .append(" TIFF file(s) totalling ")

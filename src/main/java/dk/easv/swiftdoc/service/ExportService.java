@@ -64,9 +64,11 @@ public class ExportService {
      *   pagesWritten = total pages across all files
      *   skipped      = documents that had no files (were not exported)
      *   outputDir    = absolute path of the folder we wrote to
+     *   exportedDocumentIds = document ids that produced a TIFF file
      */
     public record ExportResult(int filesWritten, int pagesWritten,
-                               List<String> skipped, String outputDir) {}
+                               List<String> skipped, String outputDir,
+                               List<Integer> exportedDocumentIds) {}
 
     /**
      * Export a box: every Document becomes one multi-page TIFF.
@@ -95,6 +97,7 @@ public class ExportService {
         int filesWritten = 0;
         int pagesWritten = 0;
         List<String> skipped = new ArrayList<>();
+        List<Integer> exportedDocumentIds = new ArrayList<>();
 
         for (Document doc : documents) {
             List<File> files = fileDAO.getByDocument(doc.getDocumentId());
@@ -131,9 +134,11 @@ public class ExportService {
             tiffExporter.writeMultiPage(pages, outputFile);
             filesWritten++;
             pagesWritten += pages.size();
+            exportedDocumentIds.add(doc.getDocumentId());
         }
 
-        return new ExportResult(filesWritten, pagesWritten, skipped, outputDir.getAbsolutePath());
+        return new ExportResult(filesWritten, pagesWritten, skipped,
+                outputDir.getAbsolutePath(), exportedDocumentIds);
     }
 
     /**
