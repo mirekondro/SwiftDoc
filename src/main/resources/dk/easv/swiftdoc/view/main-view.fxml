@@ -79,7 +79,7 @@
 
             <VBox spacing="6.0" styleClass="card">
                 <Label text="Shortcuts" styleClass="section-title"/>
-                <Label text="F1  – New scan&#10;F2  – Scan&#10;Ctrl+R – Rotate right&#10;Ctrl+L – Rotate left&#10;Ctrl+0 – Reset rotation&#10;Ctrl+S – Export"
+                <Label text="F1  – New scan&#10;F2  – Scan&#10;PageUp – Previous file&#10;PageDown – Next file&#10;Ctrl+R – Rotate right&#10;Ctrl+L – Rotate left&#10;Ctrl+0 – Reset rotation&#10;Ctrl+S – Export"
                        wrapText="true" styleClass="muted"/>
             </VBox>
         </VBox>

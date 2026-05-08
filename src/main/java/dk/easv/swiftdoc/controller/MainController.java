@@ -130,6 +130,16 @@ public class MainController {
             event.consume();
             return;
         }
+        if (event.getCode() == KeyCode.PAGE_UP) {
+            selectAdjacentFile(-1);
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.PAGE_DOWN) {
+            selectAdjacentFile(1);
+            event.consume();
+            return;
+        }
         if (event.isControlDown() && event.getCode() == KeyCode.R) {
             rotateViewer(90);
             event.consume();
@@ -580,22 +590,50 @@ public class MainController {
         loadAndDisplayFile(node.file());
     }
 
+    private void selectAdjacentFile(int delta) {
+        List<TreeItem<SidebarNode>> files = getFileItemsInOrder();
+        if (files.isEmpty()) {
+            return;
+        }
 
-    @FXML
-    private void onRotateLeftCommand() {
-        rotateViewer(-90);
+        TreeItem<SidebarNode> selected = sidebarTree.getSelectionModel().getSelectedItem();
+        int index = files.indexOf(selected);
+        int targetIndex;
+
+        if (index < 0) {
+            targetIndex = delta > 0 ? 0 : files.size() - 1;
+        } else {
+            targetIndex = index + delta;
+            if (targetIndex < 0 || targetIndex >= files.size()) {
+                return;
+            }
+        }
+
+        TreeItem<SidebarNode> target = files.get(targetIndex);
+        sidebarTree.getSelectionModel().select(target);
+        int row = sidebarTree.getRow(target);
+        if (row >= 0) {
+            sidebarTree.scrollTo(row);
+        }
     }
 
-    @FXML
-    private void onRotateRightCommand() {
-        rotateViewer(90);
+    private List<TreeItem<SidebarNode>> getFileItemsInOrder() {
+        List<TreeItem<SidebarNode>> files = new ArrayList<>();
+        TreeItem<SidebarNode> root = sidebarTree.getRoot();
+        if (root == null) {
+            return files;
+        }
+        for (TreeItem<SidebarNode> boxItem : root.getChildren()) {
+            for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
+                for (TreeItem<SidebarNode> fileItem : docItem.getChildren()) {
+                    if (isFileItem(fileItem)) {
+                        files.add(fileItem);
+                    }
+                }
+            }
+        }
+        return files;
     }
-
-    @FXML
-    private void onResetRotationCommand() {
-        resetViewerRotation();
-    }
-
 
     /**
      * Fetch TIFF bytes for the clicked file and show in the viewer.
