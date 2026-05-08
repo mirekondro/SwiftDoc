@@ -100,9 +100,17 @@ BEGIN
         DocumentId INT IDENTITY(1,1) PRIMARY KEY,
         BoxId INT NOT NULL,
         BarcodeValue NVARCHAR(255) NULL,
+        DocumentStatus NVARCHAR(20) NOT NULL DEFAULT 'NEW',
         CONSTRAINT FK_Documents_Boxes
             FOREIGN KEY (BoxId) REFERENCES dbo.Boxes(BoxId)
     );
+END;
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.Documents', 'DocumentStatus') IS NULL
+    BEGIN
+        ALTER TABLE dbo.Documents ADD DocumentStatus NVARCHAR(20) NOT NULL DEFAULT 'NEW';
+    END;
 END;
 
 IF OBJECT_ID('dbo.Files', 'U') IS NULL

@@ -19,6 +19,7 @@ public final class DatabaseMigrator {
                 return;
             }
             ensureProfileColumns(connection);
+            ensureDocumentStatusColumn(connection);
             migrated = true;
         }
     }
@@ -33,5 +34,12 @@ public final class DatabaseMigrator {
                             + "BEGIN ALTER TABLE dbo.Profiles ADD DuplicateDetectionEnabled BIT NOT NULL DEFAULT 0; END;");
         }
     }
-}
 
+    private static void ensureDocumentStatusColumn(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Documents', 'DocumentStatus') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Documents ADD DocumentStatus NVARCHAR(20) NOT NULL DEFAULT 'NEW'; END;");
+        }
+    }
+}

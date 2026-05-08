@@ -16,10 +16,15 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -84,10 +89,7 @@ public class MainController {
         public String toString() {
             return switch (kind) {
                 case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId();
-                case DOCUMENT -> "\uD83D\uDCC4 Document #" + document.getDocumentNumber()
-                        + (document.getBarcodeValue() != null
-                        ? " [" + document.getBarcodeValue() + "]"
-                        : "");
+                case DOCUMENT -> "\uD83D\uDCC4 " + document.toString();
                 case FILE -> "\uD83D\uDCC3 File #" + file.getReferenceId();
             };
         }
@@ -213,6 +215,7 @@ public class MainController {
                     if (empty || item == null) {
                         setText(null);
                         setGraphic(null);
+                        setContextMenu(null);
                         return;
                     }
                     container.getStyleClass().setAll("sidebar-cell");
@@ -222,6 +225,7 @@ public class MainController {
                     applyBadge(badgeLabel, status);
                     setText(null);
                     setGraphic(container);
+                    setContextMenu(buildContextMenu(item));
                 }
             };
 
@@ -265,6 +269,56 @@ public class MainController {
             cell.setOnDragDone(event -> draggedTreeItem = null);
             return cell;
         });
+    }
+
+    private ContextMenu buildContextMenu(SidebarNode node) {
+        if (node == null || node.kind() != SidebarNode.Kind.DOCUMENT) {
+            return null;
+        }
+        Document doc = node.document();
+        if (doc == null) {
+            return null;
+        }
+        ContextMenu menu = new ContextMenu();
+        Menu statusMenu = new Menu("Status");
+        ToggleGroup group = new ToggleGroup();
+        for (Document.Status status : Document.Status.values()) {
+            RadioMenuItem item = new RadioMenuItem(status.label());
+            item.setToggleGroup(group);
+            item.setSelected(status == doc.getStatus());
+            item.setOnAction(event -> updateDocumentStatus(doc, status));
+            statusMenu.getItems().add(item);
+        }
+        menu.getItems().add(statusMenu);
+        return menu;
+    }
+
+    private void updateDocumentStatus(Document doc, Document.Status status) {
+        if (doc == null || status == null || status == doc.getStatus()) {
+            return;
+        }
+        Document.Status previous = doc.getStatus();
+        doc.setStatus(status);
+        sidebarTree.refresh();
+
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.updateDocumentStatus(doc.getDocumentId(), status);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    doc.setStatus(previous);
+                    sidebarTree.refresh();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Status update failed");
+                    alert.setHeaderText("Could not update document status");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-update-status");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private enum RenderStatus {

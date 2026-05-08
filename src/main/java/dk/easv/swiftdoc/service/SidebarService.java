@@ -83,4 +83,11 @@ public class SidebarService {
     public void updateFileOrder(int documentId, List<File> orderedFiles) throws SQLException {
         fileDAO.updateIncrementalOrder(documentId, orderedFiles);
     }
+
+    /**
+     * Update the status of a document.
+     */
+    public void updateDocumentStatus(int documentId, Document.Status status) throws SQLException {
+        documentDAO.updateStatus(documentId, status);
+    }
 }

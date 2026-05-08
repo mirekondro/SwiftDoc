@@ -16,16 +16,53 @@ package dk.easv.swiftdoc.model;
  */
 public class Document {
 
+    public enum Status {
+        NEW("NEW", "New"),
+        IN_PROGRESS("IN_PROGRESS", "In progress"),
+        ON_HOLD("ON_HOLD", "On hold"),
+        DONE("DONE", "Done");
+
+        private final String dbValue;
+        private final String label;
+
+        Status(String dbValue, String label) {
+            this.dbValue = dbValue;
+            this.label = label;
+        }
+
+        public String dbValue() {
+            return dbValue;
+        }
+
+        public String label() {
+            return label;
+        }
+
+        public static Status fromDb(String value) {
+            if (value == null || value.isBlank()) {
+                return NEW;
+            }
+            for (Status status : values()) {
+                if (status.dbValue.equalsIgnoreCase(value)) {
+                    return status;
+                }
+            }
+            return NEW;
+        }
+    }
+
     private int documentId;
     private int boxId;
     private int documentNumber;
     private String barcodeValue;
+    private Status status;
 
-    public Document(int documentId, int boxId, int documentNumber, String barcodeValue) {
+    public Document(int documentId, int boxId, int documentNumber, String barcodeValue, Status status) {
         this.documentId = documentId;
         this.boxId = boxId;
         this.documentNumber = documentNumber;
         this.barcodeValue = barcodeValue;
+        this.status = status == null ? Status.NEW : status;
     }
 
     public int getDocumentId() { return documentId; }
@@ -40,9 +77,14 @@ public class Document {
     public String getBarcodeValue() { return barcodeValue; }
     public void setBarcodeValue(String barcodeValue) { this.barcodeValue = barcodeValue; }
 
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status == null ? Status.NEW : status; }
+
     @Override
     public String toString() {
+        String statusLabel = status != null ? " (" + status.label() + ")" : "";
         return "Document #" + documentNumber
-                + (barcodeValue != null ? " [" + barcodeValue + "]" : "");
+                + (barcodeValue != null ? " [" + barcodeValue + "]" : "")
+                + statusLabel;
     }
 }
