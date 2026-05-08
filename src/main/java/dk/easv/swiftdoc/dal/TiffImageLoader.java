@@ -3,9 +3,7 @@ package dk.easv.swiftdoc.dal;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 /**
@@ -34,16 +32,7 @@ public class TiffImageLoader {
             throw new IllegalArgumentException("tiffBytes must not be null or empty");
         }
 
-        BufferedImage awtImage;
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(tiffBytes)) {
-            awtImage = ImageIO.read(bais);
-        }
-        if (awtImage == null) {
-            throw new IOException("ImageIO could not decode TIFF bytes (no compatible reader found)");
-        }
-
-        // SwingFXUtils.toFXImage takes an optional WritableImage to reuse;
-        // passing null tells it to allocate a fresh one.
+        BufferedImage awtImage = TiffImageIO.readFirstImage(tiffBytes);
         return SwingFXUtils.toFXImage(awtImage, null);
     }
 }

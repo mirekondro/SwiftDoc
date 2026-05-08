@@ -9,9 +9,7 @@ import com.google.zxing.Result;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.common.HybridBinarizer;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
@@ -62,16 +60,7 @@ public class BarcodeDetector {
             throw new IllegalArgumentException("tiffBytes must not be null or empty");
         }
 
-        BufferedImage image;
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(tiffBytes)) {
-            image = ImageIO.read(bais);
-        }
-        if (image == null) {
-            // ImageIO returns null when no registered reader can handle the
-            // input. With TwelveMonkeys on the classpath this should never
-            // happen for valid TIFFs, but treat it as a real error.
-            throw new IOException("ImageIO could not decode TIFF bytes (no compatible reader)");
-        }
+        BufferedImage image = TiffImageIO.readFirstImage(tiffBytes);
 
         LuminanceSource source = new BufferedImageLuminanceSource(image);
         BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));

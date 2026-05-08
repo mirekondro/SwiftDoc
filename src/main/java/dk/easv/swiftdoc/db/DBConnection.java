@@ -15,9 +15,6 @@ public final class DBConnection {
     private String username;
     private String password;
 
-    // Shared connection object used across the application.
-    private Connection connection;
-
     // Private constructor that loads credentials from config.properties
     private DBConnection() {
         Properties props = new Properties();
@@ -48,20 +45,13 @@ public final class DBConnection {
 
     // Returns the active connection; creates it lazily if missing/closed.
     public Connection getConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            synchronized (this) {
-                if (connection == null || connection.isClosed()) {
-                    connection = DriverManager.getConnection(url, username, password);
-                }
-            }
-        }
+        Connection connection = DriverManager.getConnection(url, username, password);
+        DatabaseMigrator.migrate(connection);
         return connection;
     }
 
     // Graceful shutdown helper.
     public synchronized void closeConnection() throws SQLException {
-        if (connection != null && !connection.isClosed()) {
-            connection.close();
-        }
+        // No-op: connections are created per call and closed by try-with-resources.
     }
 }

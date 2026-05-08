@@ -8,19 +8,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Data access for {@link File}.
  *
- * Sprint 1: INSERT + reference-id calculation.
- *
  * Schema: dbo.Files (FileId, DocumentId, ReferenceId, IncrementalId, RotationAngle, TiffData)
  *
- * ReferenceId is the scan order WITHIN A BOX (immutable audit of the order
- * pages came off the scanner). IncrementalId is the display order WITHIN A
- * DOCUMENT (mutable, US-15 lets users drag to reorder).
- *
- * Sprint 1 sets both to the same value as files arrive in scan order.
+ * Note on TIFF bytes: getByDocument() does NOT load TiffData (lazy loading,
+ * keeps the sidebar fast even with many files). Use getTiffData(fileId) to
+ * fetch the bytes only when actually needed (e.g. when the user clicks a
+ * file to view it).
  */
 public class FileDAO {
 
@@ -29,24 +28,22 @@ public class FileDAO {
                     "(DocumentId, ReferenceId, IncrementalId, RotationAngle, TiffData) " +
                     "VALUES (?, ?, ?, ?, ?)";
 
-    /** Counts existing files in the box across all its documents. */
     private static final String COUNT_FILES_IN_BOX =
             "SELECT COUNT(*) FROM dbo.Files f " +
                     "JOIN dbo.Documents d ON d.DocumentId = f.DocumentId " +
                     "WHERE d.BoxId = ?";
 
-    /** Counts existing files in just this document (for IncrementalId). */
     private static final String COUNT_FILES_IN_DOCUMENT =
             "SELECT COUNT(*) FROM dbo.Files WHERE DocumentId = ?";
 
-    /**
-     * Save a TIFF as a file row attached to the given document.
-     *
-     * @param documentId  parent document
-     * @param boxId       parent box (used to compute ReferenceId across all docs)
-     * @param tiffBytes   raw TIFF data
-     * @return the persisted File with DB-assigned FileId
-     */
+    /** Metadata-only query — no TiffData column, fast even with many big files. */
+    private static final String SELECT_BY_DOCUMENT_METADATA =
+            "SELECT FileId, DocumentId, ReferenceId, IncrementalId, RotationAngle " +
+                    "FROM dbo.Files WHERE DocumentId = ? ORDER BY IncrementalId";
+
+    private static final String SELECT_TIFF_DATA =
+            "SELECT TiffData FROM dbo.Files WHERE FileId = ?";
+
     public File create(int documentId, int boxId, byte[] tiffBytes) throws SQLException {
         if (tiffBytes == null || tiffBytes.length == 0) {
             throw new IllegalArgumentException("tiffBytes must not be null or empty");
@@ -83,6 +80,108 @@ public class FileDAO {
 
             return new File(newId, documentId, referenceId, incrementalId,
                     rotationAngle, tiffBytes);
+        }
+    }
+
+    private static final String UPDATE_ROTATION_SQL =
+            "UPDATE dbo.Files SET RotationAngle = ? WHERE FileId = ?";
+
+    private static final String UPDATE_INCREMENTAL_SQL =
+            "UPDATE dbo.Files SET IncrementalId = ? WHERE FileId = ? AND DocumentId = ?";
+
+    /**
+     * @return files in the document ordered by IncrementalId.
+     *         The returned File objects have null tiffData (use getTiffData
+     *         to fetch the bytes when actually needed).
+     */
+    public List<File> getByDocument(int documentId) throws SQLException {
+        List<File> files = new ArrayList<>();
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_BY_DOCUMENT_METADATA)) {
+
+            stmt.setInt(1, documentId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    files.add(new File(
+                            rs.getInt("FileId"),
+                            rs.getInt("DocumentId"),
+                            rs.getInt("ReferenceId"),
+                            rs.getInt("IncrementalId"),
+                            rs.getInt("RotationAngle"),
+                            null   // tiffData fetched lazily
+                    ));
+                }
+            }
+        }
+        return files;
+    }
+
+    /**
+     * Fetch the TIFF bytes for a single file.
+     *
+     * @param fileId the file's primary key
+     * @return raw TIFF bytes, or null if the row has no TiffData
+     * @throws SQLException if the file id doesn't exist
+     */
+    public byte[] getTiffData(int fileId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_TIFF_DATA)) {
+
+            stmt.setInt(1, fileId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("FileId " + fileId + " not found");
+                }
+                return rs.getBytes("TiffData");
+            }
+        }
+    }
+
+    /**
+     * Update the rotation angle of a file.
+     *
+     * @param fileId        the ID of the file to update
+     * @param rotationAngle the new rotation angle
+     */
+    public void updateRotation(int fileId, int rotationAngle) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_ROTATION_SQL)) {
+            stmt.setInt(1, rotationAngle);
+            stmt.setInt(2, fileId);
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Update the display order of files within a document.
+     *
+     * @param documentId the document containing the files
+     * @param orderedFiles files in the desired order (1-based incremental ids)
+     */
+    public void updateIncrementalOrder(int documentId, List<File> orderedFiles) throws SQLException {
+        if (orderedFiles == null || orderedFiles.isEmpty()) {
+            return;
+        }
+
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_INCREMENTAL_SQL)) {
+            conn.setAutoCommit(false);
+            try {
+                int incrementalId = 1;
+                for (File file : orderedFiles) {
+                    stmt.setInt(1, incrementalId++);
+                    stmt.setInt(2, file.getFileId());
+                    stmt.setInt(3, documentId);
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
         }
     }
 

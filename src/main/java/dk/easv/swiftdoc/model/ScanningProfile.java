@@ -15,11 +15,26 @@ public class ScanningProfile {
     private int profileId;
     private String profileName;
     private String splitRule;
+    private int clientId;
+    private String clientName;
+    private boolean duplicateDetectionEnabled;
 
     public ScanningProfile(int profileId, String profileName, String splitRule) {
+        this(profileId, profileName, splitRule, 0, "Unknown", false);
+    }
+
+    public ScanningProfile(int profileId, String profileName, String splitRule, int clientId, String clientName) {
+        this(profileId, profileName, splitRule, clientId, clientName, false);
+    }
+
+    public ScanningProfile(int profileId, String profileName, String splitRule,
+                           int clientId, String clientName, boolean duplicateDetectionEnabled) {
         this.profileId = profileId;
         this.profileName = profileName;
         this.splitRule = splitRule;
+        this.clientId = clientId;
+        this.clientName = clientName;
+        this.duplicateDetectionEnabled = duplicateDetectionEnabled;
     }
 
     public int getProfileId() {
@@ -46,9 +61,36 @@ public class ScanningProfile {
         this.splitRule = splitRule;
     }
 
+    public int getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(int clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getClientName() {
+        return clientName;
+    }
+
+    public void setClientName(String clientName) {
+        this.clientName = clientName;
+    }
+
+    public boolean isDuplicateDetectionEnabled() {
+        return duplicateDetectionEnabled;
+    }
+
+    public void setDuplicateDetectionEnabled(boolean duplicateDetectionEnabled) {
+        this.duplicateDetectionEnabled = duplicateDetectionEnabled;
+    }
+
     /** ComboBox renders items via toString(). */
     @Override
     public String toString() {
-        return profileName;
+        if (clientName == null || clientName.isBlank()) {
+            return profileName;
+        }
+        return clientName + " — " + profileName;
     }
 }

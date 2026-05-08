@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="dk.easv.swiftdoc.controller.ExportDialogController"
+            fx:id="dialogPane"
+            styleClass="dialog-root">
+    <fx:define>
+        <ToggleGroup fx:id="modeToggleGroup"/>
+    </fx:define>
+    <headerText>Export Scans</headerText>
+    <contentText>Choose the scope and destination folder.</contentText>
+
+    <content>
+        <VBox spacing="14.0" styleClass="dialog-content">
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Export Scope" styleClass="section-title"/>
+                <HBox spacing="10.0">
+                    <RadioButton fx:id="activeSessionRadio" text="Active session box"
+                                 toggleGroup="$modeToggleGroup"/>
+                    <RadioButton fx:id="selectedSidebarRadio" text="Selected sidebar item"
+                                 toggleGroup="$modeToggleGroup"/>
+                </HBox>
+                <Label fx:id="modeHintLabel" text="" styleClass="dialog-muted" wrapText="true"/>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Destination Folder" styleClass="section-title"/>
+                <HBox spacing="8.0">
+                    <TextField fx:id="folderTextField" promptText="Choose output folder..." HBox.hgrow="ALWAYS"/>
+                    <Button text="Browse..." onAction="#onBrowseFolder" styleClass="btn"/>
+                </HBox>
+                <Label fx:id="folderErrorLabel" text="" style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
+            </VBox>
+        </VBox>
+    </content>
+
+    <buttonTypes>
+        <ButtonType fx:id="exportButtonType" text="Export" buttonData="OK_DONE"/>
+        <ButtonType fx:id="cancelButtonType" text="Cancel" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
+</DialogPane>

@@ -8,12 +8,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Data access for {@link Box}.
- *
- * Sprint 1: INSERT only (create box at session start).
- * SELECT/UPDATE/DELETE arrive with later stories.
  *
  * Schema: dbo.Boxes (BoxId, BoxName, ProfileId, GlobalRotation)
  */
@@ -27,13 +27,10 @@ public class BoxDAO {
             "SELECT BoxId, BoxName, ProfileId, GlobalRotation " +
                     "FROM dbo.Boxes WHERE BoxId = ?";
 
-    /**
-     * Create a new box.
-     *
-     * @param boxName    user-entered label
-     * @param profileId  FK to dbo.Profiles
-     * @return the persisted Box with DB-assigned BoxId
-     */
+    private static final String SELECT_ALL =
+            "SELECT BoxId, BoxName, ProfileId, GlobalRotation " +
+                    "FROM dbo.Boxes ORDER BY BoxId";
+
     public Box create(String boxName, int profileId) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement insert = conn.prepareStatement(
@@ -41,7 +38,7 @@ public class BoxDAO {
 
             insert.setString(1, boxName);
             insert.setInt(2, profileId);
-            insert.setInt(3, 0);   // GlobalRotation defaults to 0 in Sprint 1
+            insert.setInt(3, 0);
 
             int rows = insert.executeUpdate();
             if (rows != 1) {
@@ -56,24 +53,58 @@ public class BoxDAO {
                 newId = keys.getInt(1);
             }
 
-            return fetchById(conn, newId);
+            return fetchByIdInternal(conn, newId);
         }
     }
 
-    private Box fetchById(Connection conn, int boxId) throws SQLException {
+    public List<Box> getAll() throws SQLException {
+        List<Box> boxes = new ArrayList<>();
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_ALL);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                boxes.add(mapRow(rs));
+            }
+        }
+        return boxes;
+    }
+
+    /**
+     * Fetch a box by its id.
+     *
+     * @return the box if found; empty if no row matches
+     */
+    public Optional<Box> getById(int boxId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_BY_ID)) {
+
+            stmt.setInt(1, boxId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) return Optional.empty();
+                return Optional.of(mapRow(rs));
+            }
+        }
+    }
+
+    private Box fetchByIdInternal(Connection conn, int boxId) throws SQLException {
         try (PreparedStatement select = conn.prepareStatement(SELECT_BY_ID)) {
             select.setInt(1, boxId);
             try (ResultSet rs = select.executeQuery()) {
                 if (!rs.next()) {
                     throw new SQLException("Newly inserted BoxId " + boxId + " not found");
                 }
-                return new Box(
-                        rs.getInt("BoxId"),
-                        rs.getString("BoxName"),
-                        rs.getInt("ProfileId"),
-                        rs.getInt("GlobalRotation")
-                );
+                return mapRow(rs);
             }
         }
+    }
+
+    private Box mapRow(ResultSet rs) throws SQLException {
+        return new Box(
+                rs.getInt("BoxId"),
+                rs.getString("BoxName"),
+                rs.getInt("ProfileId"),
+                rs.getInt("GlobalRotation")
+        );
     }
 }
