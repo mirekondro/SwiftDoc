@@ -12,7 +12,8 @@
 
 <DialogPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="dk.easv.swiftdoc.controller.ExportDialogController"
-            fx:id="dialogPane">
+            fx:id="dialogPane"
+            styleClass="dialog-root">
     <fx:define>
         <ToggleGroup fx:id="modeToggleGroup"/>
     </fx:define>
@@ -20,23 +21,23 @@
     <contentText>Choose the scope and destination folder.</contentText>
 
     <content>
-        <VBox spacing="14.0" style="-fx-padding: 16;">
-            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
-                <Label text="Export Scope" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+        <VBox spacing="14.0" styleClass="dialog-content">
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Export Scope" styleClass="section-title"/>
                 <HBox spacing="10.0">
                     <RadioButton fx:id="activeSessionRadio" text="Active session box"
                                  toggleGroup="$modeToggleGroup"/>
                     <RadioButton fx:id="selectedSidebarRadio" text="Selected sidebar item"
                                  toggleGroup="$modeToggleGroup"/>
                 </HBox>
-                <Label fx:id="modeHintLabel" text="" style="-fx-text-fill: #666666; -fx-font-size: 10;" wrapText="true"/>
+                <Label fx:id="modeHintLabel" text="" styleClass="dialog-muted" wrapText="true"/>
             </VBox>
 
-            <VBox spacing="8.0" style="-fx-border-color: #e0e0e0; -fx-border-radius: 6; -fx-padding: 12;">
-                <Label text="Destination Folder" style="-fx-font-weight: bold; -fx-font-size: 12;"/>
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Destination Folder" styleClass="section-title"/>
                 <HBox spacing="8.0">
                     <TextField fx:id="folderTextField" promptText="Choose output folder..." HBox.hgrow="ALWAYS"/>
-                    <Button text="Browse..." onAction="#onBrowseFolder"/>
+                    <Button text="Browse..." onAction="#onBrowseFolder" styleClass="btn"/>
                 </HBox>
                 <Label fx:id="folderErrorLabel" text="" style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
             </VBox>

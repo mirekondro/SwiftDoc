@@ -20,6 +20,8 @@ public class HelloApplication extends Application {
 
             FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource("/dk/easv/swiftdoc/view/main-view.fxml"));
             Scene scene = new Scene(fxmlLoader.load());
+            scene.getStylesheets().add(
+                    HelloApplication.class.getResource("/dk/easv/swiftdoc/view/app.css").toExternalForm());
             stage.setTitle("SwiftDoc");
             stage.setScene(scene);
             stage.show();

@@ -19,6 +19,7 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -60,6 +61,7 @@ public class MainController {
     @FXML private Label viewerCaptionLabel;
     @FXML private ImageView pageImageView;
     @FXML private TreeView<SidebarNode> sidebarTree;
+    @FXML private ToggleButton themeToggle;
 
     /**
      * Wrapper for tree node values. Each node holds either a Box, a Document,
@@ -213,6 +215,8 @@ public class MainController {
                         setGraphic(null);
                         return;
                     }
+                    container.getStyleClass().setAll("sidebar-cell");
+                    textLabel.getStyleClass().setAll("sidebar-cell-text");
                     textLabel.setText(item.toString());
                     RenderStatus status = getRenderStatus(item, getTreeItem());
                     applyBadge(badgeLabel, status);
@@ -264,15 +268,15 @@ public class MainController {
     }
 
     private enum RenderStatus {
-        RENDERED("Rendered", "#2e7d32"),
-        NOT_RENDERED("Not rendered", "#6b7280");
+        RENDERED("Rendered", "status-rendered"),
+        NOT_RENDERED("Not rendered", "status-pending");
 
         private final String label;
-        private final String color;
+        private final String styleClass;
 
-        RenderStatus(String label, String color) {
+        RenderStatus(String label, String styleClass) {
             this.label = label;
-            this.color = color;
+            this.styleClass = styleClass;
         }
     }
 
@@ -312,9 +316,7 @@ public class MainController {
             return;
         }
         badgeLabel.setText(status.label);
-        badgeLabel.setStyle("-fx-background-color: " + status.color
-                + "; -fx-text-fill: white; -fx-padding: 2 6 2 6;"
-                + " -fx-background-radius: 8; -fx-font-size: 10px;");
+        badgeLabel.getStyleClass().setAll("status-badge", status.styleClass);
     }
 
     private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
@@ -532,6 +534,7 @@ public class MainController {
             FXMLLoader loader = new FXMLLoader(
                     MainController.class.getResource("/dk/easv/swiftdoc/view/new-scan-dialog.fxml"));
             DialogPane dialogPane = loader.load();
+            applyDialogTheme(dialogPane);
             NewScanDialogController dialogController = loader.getController();
 
             Dialog<?> dialog = new Dialog<>();
@@ -759,6 +762,7 @@ public class MainController {
             FXMLLoader loader = new FXMLLoader(
                     MainController.class.getResource("/dk/easv/swiftdoc/view/export-dialog.fxml"));
             DialogPane dialogPane = loader.load();
+            applyDialogTheme(dialogPane);
             ExportDialogController dialogController = loader.getController();
 
             Dialog<?> dialog = new Dialog<>();
@@ -882,5 +886,48 @@ public class MainController {
 
     public ScanSession getActiveSession() {
         return activeSession;
+    }
+
+    @FXML
+    private void onThemeToggle() {
+        boolean darkMode = themeToggle != null && themeToggle.isSelected();
+        applyTheme(darkMode);
+    }
+
+    private void applyTheme(boolean darkMode) {
+        if (root == null) {
+            return;
+        }
+        if (darkMode) {
+            if (!root.getStyleClass().contains("theme-dark")) {
+                root.getStyleClass().add("theme-dark");
+            }
+            if (themeToggle != null) {
+                themeToggle.setText("Light");
+            }
+        } else {
+            root.getStyleClass().remove("theme-dark");
+            if (themeToggle != null) {
+                themeToggle.setText("Dark");
+            }
+        }
+    }
+
+    private void applyDialogTheme(DialogPane dialogPane) {
+        if (dialogPane == null) {
+            return;
+        }
+        String sheet = MainController.class.getResource(
+                "/dk/easv/swiftdoc/view/app.css").toExternalForm();
+        if (!dialogPane.getStylesheets().contains(sheet)) {
+            dialogPane.getStylesheets().add(sheet);
+        }
+        if (!dialogPane.getStyleClass().contains("dialog-root")) {
+            dialogPane.getStyleClass().add("dialog-root");
+        }
+        if (root != null && root.getStyleClass().contains("theme-dark")
+                && !dialogPane.getStyleClass().contains("theme-dark")) {
+            dialogPane.getStyleClass().add("theme-dark");
+        }
     }
 }
