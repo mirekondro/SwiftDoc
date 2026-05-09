@@ -19,7 +19,7 @@ public final class DatabaseMigrator {
                 return;
             }
             ensureProfileColumns(connection);
-            ensureDocumentStatusColumn(connection);
+            ensureDocumentColumns(connection);
             migrated = true;
         }
     }
@@ -35,11 +35,18 @@ public final class DatabaseMigrator {
         }
     }
 
-    private static void ensureDocumentStatusColumn(Connection connection) throws SQLException {
+    private static void ensureDocumentColumns(Connection connection) throws SQLException {
         try (Statement stmt = connection.createStatement()) {
+            // Status column for document QA workflow (US-17).
+            // Default 'NEW' so existing rows get a sensible starting status.
             stmt.execute(
-                    "IF COL_LENGTH('dbo.Documents', 'DocumentStatus') IS NULL "
-                            + "BEGIN ALTER TABLE dbo.Documents ADD DocumentStatus NVARCHAR(20) NOT NULL DEFAULT 'NEW'; END;");
+                    "IF COL_LENGTH('dbo.Documents', 'Status') IS NULL "
+                            + "BEGIN "
+                            + "  ALTER TABLE dbo.Documents "
+                            + "    ADD Status NVARCHAR(20) NOT NULL "
+                            + "    CONSTRAINT DF_Documents_Status DEFAULT 'NEW' "
+                            + "    WITH VALUES; "
+                            + "END;");
         }
     }
 }
