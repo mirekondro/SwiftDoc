@@ -109,6 +109,21 @@ public class MainController {
     }
 
     @FXML
+    private void onRotateLeftCommand() {
+        rotateViewer(-90);
+    }
+
+    @FXML
+    private void onRotateRightCommand() {
+        rotateViewer(90);
+    }
+
+    @FXML
+    private void onResetRotationCommand() {
+        resetViewerRotation();
+    }
+
+    @FXML
     private void onKeyPressed(KeyEvent event) {
         if (event.getCode() == KeyCode.F1) {
             onNewCommand();
@@ -810,18 +825,37 @@ public class MainController {
     /** JavaFX thread. */
     private void applyResultsToUi(List<ScanResult> results) {
         for (ScanResult r : results) {
-            lastResultLabel.setText("Page saved as File #"
-                    + r.savedFile().getReferenceId()
-                    + " (" + r.savedFile().getTiffData().length + " bytes)");
-            System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
-                    + " in Document " + r.savedFile().getDocumentId());
+            switch (r.kind()) {
+                case PAGE -> {
+                    lastResultLabel.setText("Page saved as File #"
+                            + r.savedFile().getReferenceId()
+                            + " (" + r.savedFile().getTiffData().length + " bytes)");
+                    System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
+                            + " in Document " + r.savedFile().getDocumentId());
 
-            showPageInViewer(
-                    r.tiffBytes(),
-                    "File #" + r.savedFile().getReferenceId()
-                            + " — Document " + r.savedFile().getDocumentId()
-            );
-            addFileToSidebar(r.savedFile());
+                    showPageInViewer(
+                            r.tiffBytes(),
+                            "File #" + r.savedFile().getReferenceId()
+                                    + " — Document " + r.savedFile().getDocumentId()
+                    );
+                    addFileToSidebar(r.savedFile());
+                }
+                case DOCUMENT_SPLIT -> {
+                    lastResultLabel.setText("Barcode \"" + r.barcodeValue()
+                            + "\" detected — new Document #"
+                            + r.newDocument().getDocumentNumber() + " started");
+                    System.out.println("SPLIT: barcode " + r.barcodeValue()
+                            + " → Document id " + r.newDocument().getDocumentId());
+
+                    showPageInViewer(
+                            r.tiffBytes(),
+                            "Separator [" + r.barcodeValue()
+                                    + "] — Document #"
+                                    + r.newDocument().getDocumentNumber() + " started"
+                    );
+                    addDocumentToSidebar(r.newDocument());
+                }
+            }
         }
 
         refreshSessionLabels();
