@@ -39,6 +39,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
+import javafx.scene.control.TextField;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -103,6 +104,7 @@ public class MainController {
         sidebarTree.setRoot(new TreeItem<>(null));
         loadSidebarTreeAsync();
         configureSidebarDragAndDrop();
+        sidebarSearchField.textProperty().addListener((obs, oldVal, newVal) -> filterTree(newVal));
 
         sidebarTree.getSelectionModel().selectedItemProperty()
                 .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
@@ -170,6 +172,12 @@ public class MainController {
             event.consume();
             return;
         }
+        if (event.isControlDown() && event.getCode() == KeyCode.F) {
+            sidebarSearchField.requestFocus();
+            sidebarSearchField.selectAll();
+            event.consume();
+            return;
+        }
         if (event.isControlDown() && event.getCode() == KeyCode.S) {
             onSaveCommand();
             event.consume();
@@ -219,12 +227,114 @@ public class MainController {
     }
 
     private void applySidebarTree(List<BoxBranch> branches) {
+        this.allBranches = new ArrayList<>(branches);
+        renderTree(branches);
+    }
+    private void renderTree(List<BoxBranch> branches) {
         TreeItem<SidebarNode> root = sidebarTree.getRoot();
         root.getChildren().clear();
-
         for (BoxBranch branch : branches) {
             root.getChildren().add(buildBoxItem(branch));
         }
+    }
+    @FXML
+    private void onClearSidebarSearch() {
+        sidebarSearchField.clear();   // triggers the listener → resets the tree
+    }
+
+
+    private void filterTree(String query) {
+        if (query == null || query.isBlank()) {
+            renderTree(allBranches);
+            return;
+        }
+
+        String needle = query.trim().toLowerCase(java.util.Locale.ROOT);
+        List<BoxBranch> filtered = new ArrayList<>();
+
+        for (BoxBranch branch : allBranches) {
+            BoxBranch trimmed = filterBranch(branch, needle);
+            if (trimmed != null) {
+                filtered.add(trimmed);
+            }
+        }
+
+        renderTree(filtered);
+    }
+
+    /**
+     * Returns a copy of the branch containing only matching subtrees, or
+     * null if nothing in this branch matches the needle.
+     */
+    private BoxBranch filterBranch(BoxBranch branch, String needle) {
+        boolean boxMatches = boxMatches(branch.box(), needle);
+
+        // If the box itself matches, keep all its documents/files unfiltered.
+        if (boxMatches) {
+            return branch;
+        }
+
+        // Otherwise filter documents — keep only those whose doc/files match.
+        List<DocumentBranch> matchingDocs = new ArrayList<>();
+        for (DocumentBranch docBranch : branch.documents()) {
+            DocumentBranch trimmed = filterDocumentBranch(docBranch, needle);
+            if (trimmed != null) {
+                matchingDocs.add(trimmed);
+            }
+        }
+
+        if (matchingDocs.isEmpty()) {
+            return null;
+        }
+        return new BoxBranch(branch.box(), matchingDocs);
+    }
+
+    private DocumentBranch filterDocumentBranch(DocumentBranch docBranch, String needle) {
+        boolean docMatches = documentMatches(docBranch.document(), needle);
+
+        // Document itself matches → show all its files.
+        if (docMatches) {
+            return docBranch;
+        }
+
+        // Otherwise keep only matching files.
+        List<File> matchingFiles = new ArrayList<>();
+        for (File file : docBranch.files()) {
+            if (fileMatches(file, needle)) {
+                matchingFiles.add(file);
+            }
+        }
+        if (matchingFiles.isEmpty()) {
+            return null;
+        }
+        return new DocumentBranch(docBranch.document(), matchingFiles);
+    }
+
+    private boolean boxMatches(Box box, String needle) {
+        if (box == null) return false;
+        if (box.getBoxName() != null
+                && box.getBoxName().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        return ("box #" + box.getBoxId()).contains(needle);
+    }
+
+    private boolean documentMatches(Document doc, String needle) {
+        if (doc == null) return false;
+        if (doc.getBarcodeValue() != null
+                && doc.getBarcodeValue().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        if (doc.getStatus() != null
+                && doc.getStatus().label().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        return ("document #" + doc.getDocumentNumber()).contains(needle);
+    }
+
+    private boolean fileMatches(File file, String needle) {
+        if (file == null) return false;
+        return ("file #" + file.getReferenceId()).contains(needle);
     }
 
     private void configureSidebarDragAndDrop() {
@@ -686,6 +796,16 @@ public class MainController {
 
     /** Append a new file under its document branch in the sidebar. */
     private void addFileToSidebar(File file) {
+        // Update the source-of-truth.
+        for (BoxBranch boxBranch : allBranches) {
+            for (DocumentBranch docBranch : boxBranch.documents()) {
+                if (docBranch.document().getDocumentId() == file.getDocumentId()) {
+                    docBranch.files().add(file);
+                    break;
+                }
+            }
+        }
+        // Update the visible tree.
         TreeItem<SidebarNode> docItem = findDocumentItem(file.getDocumentId());
         if (docItem != null) {
             docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(file)));
@@ -693,8 +813,15 @@ public class MainController {
         }
     }
 
-    /** Append a new (empty) document branch under its parent box. */
     private void addDocumentToSidebar(Document doc) {
+        // Update the source-of-truth.
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() == doc.getBoxId()) {
+                boxBranch.documents().add(new DocumentBranch(doc, new ArrayList<>()));
+                break;
+            }
+        }
+        // Update the visible tree.
         TreeItem<SidebarNode> boxItem = findBoxItem(doc.getBoxId());
         if (boxItem != null) {
             TreeItem<SidebarNode> docItem = new TreeItem<>(SidebarNode.forDocument(doc));
@@ -771,11 +898,16 @@ public class MainController {
         boxItem.getChildren().add(firstDocItem);
         boxItem.setExpanded(true);
         sidebarTree.getRoot().getChildren().add(boxItem);
+        allBranches.add(new BoxBranch(activeSession.getBox(), new ArrayList<>(List.of(new DocumentBranch(
+                activeSession.getFirstDocument(), new ArrayList<>())))));
 
         System.out.println("Session started — Box id "
                 + activeSession.getBox().getBoxId()
                 + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
     }
+
+    @FXML private TextField sidebarSearchField;
+    private List<BoxBranch> allBranches = new ArrayList<>();
 
     @FXML
     private void onScanCommand() {
