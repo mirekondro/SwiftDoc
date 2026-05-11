@@ -56,7 +56,7 @@ public class MainController {
     private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
 
     private ScanSession activeSession;
-    private double viewerRotationDegrees = 0.0;
+    private File currentlyDisplayedFile;
     private TreeItem<SidebarNode> draggedTreeItem;
 
     @FXML private VBox root;
@@ -777,11 +777,15 @@ public class MainController {
                 }
                 Image image = tiffImageLoader.load(tiffBytes);
                 Platform.runLater(() -> {
+                    currentlyDisplayedFile = file;
                     pageImageView.setImage(image);
-                    pageImageView.setRotate(viewerRotationDegrees);
+                    pageImageView.setRotate(file.getRotationAngle());
                     viewerCaptionLabel.setText(
                             "File #" + file.getReferenceId()
-                                    + " — Document " + file.getDocumentId());
+                                    + " — Document " + file.getDocumentId()
+                                    + (file.getRotationAngle() != 0
+                                    ? "  ·  " + file.getRotationAngle() + "°"
+                                    : ""));
                 });
             } catch (SQLException | IOException ex) {
                 ex.printStackTrace();
@@ -968,7 +972,8 @@ public class MainController {
                     showPageInViewer(
                             r.tiffBytes(),
                             "File #" + r.savedFile().getReferenceId()
-                                    + " — Document " + r.savedFile().getDocumentId()
+                                    + " — Document " + r.savedFile().getDocumentId(),
+                            r.savedFile()
                     );
                     addFileToSidebar(r.savedFile());
                 }
@@ -981,9 +986,9 @@ public class MainController {
 
                     showPageInViewer(
                             r.tiffBytes(),
-                            "Separator [" + r.barcodeValue()
-                                    + "] — Document #"
-                                    + r.newDocument().getDocumentNumber() + " started"
+                            "File #" + r.savedFile().getReferenceId()
+                                    + " — Document " + r.savedFile().getDocumentId(),
+                            r.savedFile()
                     );
                     addDocumentToSidebar(r.newDocument());
                 }
@@ -999,11 +1004,13 @@ public class MainController {
      * Failure here is non-fatal — we keep the previous image and log a note,
      * because the page is already saved/processed at this point.
      */
-    private void showPageInViewer(byte[] tiffBytes, String caption) {
+    private void showPageInViewer(byte[] tiffBytes, String caption, File file) {
         try {
             Image image = tiffImageLoader.load(tiffBytes);
             pageImageView.setImage(image);
-            pageImageView.setRotate(viewerRotationDegrees);
+            currentlyDisplayedFile = file;
+            int angle = file != null ? file.getRotationAngle() : 0;
+            pageImageView.setRotate(angle);
             viewerCaptionLabel.setText(caption);
         } catch (IOException ex) {
             System.err.println("Could not decode TIFF for viewer: " + ex.getMessage());
@@ -1012,18 +1019,65 @@ public class MainController {
     }
 
     private void rotateViewer(int deltaDegrees) {
-        viewerRotationDegrees = (viewerRotationDegrees + deltaDegrees) % 360;
-        if (viewerRotationDegrees < 0) {
-            viewerRotationDegrees += 360;
+        if (currentlyDisplayedFile == null) {
+            // No file to rotate — just show a hint.
+            viewerCaptionLabel.setText("Open a file first, then rotate it.");
+            return;
         }
-        pageImageView.setRotate(viewerRotationDegrees);
-        viewerCaptionLabel.setText("Rotation: " + (int) viewerRotationDegrees + "°");
+
+        int newAngle = (currentlyDisplayedFile.getRotationAngle() + deltaDegrees) % 360;
+        if (newAngle < 0) {
+            newAngle += 360;
+        }
+
+        applyRotationToFile(currentlyDisplayedFile, newAngle);
     }
 
     private void resetViewerRotation() {
-        viewerRotationDegrees = 0;
-        pageImageView.setRotate(viewerRotationDegrees);
-        viewerCaptionLabel.setText("Rotation: 0°");
+        if (currentlyDisplayedFile == null) {
+            viewerCaptionLabel.setText("Open a file first, then rotate it.");
+            return;
+        }
+        if (currentlyDisplayedFile.getRotationAngle() == 0) {
+            return; // already at 0, no DB write
+        }
+        applyRotationToFile(currentlyDisplayedFile, 0);
+    }
+
+    private void applyRotationToFile(File file, int newAngle) {
+        int previousAngle = file.getRotationAngle();
+        if (previousAngle == newAngle) {
+            return;
+        }
+
+        // 1. Update model + viewer immediately (optimistic).
+        file.setRotationAngle(newAngle);
+        pageImageView.setRotate(newAngle);
+        viewerCaptionLabel.setText("Rotation: " + newAngle + "°");
+
+        // 2. Persist on a background thread.
+        final int fileId = file.getFileId();
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.updateFileRotation(fileId, newAngle);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    // Roll back: restore previous angle in both model + viewer.
+                    file.setRotationAngle(previousAngle);
+                    if (currentlyDisplayedFile == file) {
+                        pageImageView.setRotate(previousAngle);
+                    }
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Rotation failed");
+                    alert.setHeaderText("Could not save rotation");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-rotation-worker");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void refreshSessionLabels() {

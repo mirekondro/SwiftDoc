@@ -99,4 +99,8 @@ public class SidebarService {
             throws SQLException {
         fileDAO.moveFile(fileId, fromDocumentId, toDocumentId, sourceOrder, targetOrder);
     }
+
+    public void updateFileRotation(int fileId, int rotationAngle) throws SQLException {
+        fileDAO.updateRotation(fileId, rotationAngle);
+    }
 }
