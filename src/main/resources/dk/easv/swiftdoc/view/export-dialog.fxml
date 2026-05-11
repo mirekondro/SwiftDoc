@@ -16,9 +16,10 @@
             styleClass="dialog-root">
     <fx:define>
         <ToggleGroup fx:id="modeToggleGroup"/>
+        <ToggleGroup fx:id="formatToggleGroup"/>
     </fx:define>
     <headerText>Export Scans</headerText>
-    <contentText>Choose the scope and destination folder.</contentText>
+    <contentText>Choose the scope, format, and destination folder.</contentText>
 
     <content>
         <VBox spacing="14.0" styleClass="dialog-content">
@@ -31,6 +32,17 @@
                                  toggleGroup="$modeToggleGroup"/>
                 </HBox>
                 <Label fx:id="modeHintLabel" text="" styleClass="dialog-muted" wrapText="true"/>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Output Format" styleClass="section-title"/>
+                <HBox spacing="10.0">
+                    <RadioButton fx:id="multiPageRadio" text="Multi-page (one file per Document)"
+                                 toggleGroup="$formatToggleGroup"/>
+                    <RadioButton fx:id="singlePageRadio" text="Single-page (one file per page)"
+                                 toggleGroup="$formatToggleGroup"/>
+                </HBox>
+                <Label fx:id="formatHintLabel" text="" styleClass="dialog-muted" wrapText="true"/>
             </VBox>
 
             <VBox spacing="8.0" styleClass="dialog-card">

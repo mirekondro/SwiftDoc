@@ -1133,7 +1133,9 @@ public class MainController {
             }
 
             lastResultLabel.setText("Exporting box #" + boxId + "...");
-            Thread worker = new Thread(() -> performExport(boxId, request.outputDir()), "export-worker");
+            Thread worker = new Thread(
+                    () -> performExport(boxId, request.outputDir(), request.format()),
+                    "export-worker");
             worker.setDaemon(true);
             worker.start();
         } catch (IOException ex) {
@@ -1190,9 +1192,13 @@ public class MainController {
         info.showAndWait();
     }
 
-    private void performExport(int boxId, java.io.File outputDir) {
+    private void performExport(int boxId, java.io.File outputDir,
+                               ExportDialogController.ExportFormat format) {
         try {
-            ExportResult result = exportService.exportBox(boxId, outputDir);
+            ExportResult result = (format == ExportDialogController.ExportFormat.SINGLE_PAGE)
+                    ? exportService.exportBoxAsSinglePages(boxId, outputDir)
+                    : exportService.exportBox(boxId, outputDir);
+
             Platform.runLater(() -> showExportResult(result));
         } catch (Exception ex) {
             ex.printStackTrace();
