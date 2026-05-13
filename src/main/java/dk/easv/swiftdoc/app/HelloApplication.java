@@ -24,6 +24,7 @@ public class HelloApplication extends Application {
                     HelloApplication.class.getResource("/dk/easv/swiftdoc/view/app.css").toExternalForm());
             stage.setTitle("SwiftDoc");
             stage.setScene(scene);
+            stage.setMaximized(true);
             stage.show();
         } catch (Exception ex) {
             showStartupErrorDialog(ex);

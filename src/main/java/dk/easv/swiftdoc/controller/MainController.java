@@ -59,6 +59,11 @@ public class MainController {
     private File currentlyDisplayedFile;
     private TreeItem<SidebarNode> draggedTreeItem;
 
+    private static final double ZOOM_STEP = 1.25;
+    private static final double ZOOM_MIN = 0.25;
+    private static final double ZOOM_MAX = 8.0;
+    private double zoomFactor = 1.0;
+
     @FXML private VBox root;
     @FXML private Button scanButton;
     @FXML private Label sessionInfoLabel;
@@ -121,8 +126,41 @@ public class MainController {
     }
 
     @FXML
+    private void onRotate180Command() {
+        rotateViewer(180);
+    }
+
+    @FXML
     private void onResetRotationCommand() {
         resetViewerRotation();
+    }
+
+    @FXML
+    private void onZoomInCommand() {
+        applyZoom(zoomFactor * ZOOM_STEP);
+    }
+
+    @FXML
+    private void onZoomOutCommand() {
+        applyZoom(zoomFactor / ZOOM_STEP);
+    }
+
+    @FXML
+    private void onResetZoomCommand() {
+        applyZoom(1.0);
+    }
+
+    private void applyZoom(double newZoom) {
+        double clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+        zoomFactor = clamped;
+        pageImageView.setScaleX(clamped);
+        pageImageView.setScaleY(clamped);
+    }
+
+    private void resetZoom() {
+        zoomFactor = 1.0;
+        pageImageView.setScaleX(1.0);
+        pageImageView.setScaleY(1.0);
     }
 
     @FXML
@@ -780,6 +818,7 @@ public class MainController {
                     currentlyDisplayedFile = file;
                     pageImageView.setImage(image);
                     pageImageView.setRotate(file.getRotationAngle());
+                    resetZoom();
                     viewerCaptionLabel.setText(
                             "File #" + file.getReferenceId()
                                     + " — Document " + file.getDocumentId()
@@ -892,6 +931,7 @@ public class MainController {
         lastResultLabel.setText("Ready. Press Scan to fetch the next page.");
         viewerCaptionLabel.setText("No page to display yet");
         pageImageView.setImage(null);
+        resetZoom();
 
         // Add the new Box + first Document into the sidebar tree.
         TreeItem<SidebarNode> boxItem = new TreeItem<>(
@@ -1011,6 +1051,7 @@ public class MainController {
             currentlyDisplayedFile = file;
             int angle = file != null ? file.getRotationAngle() : 0;
             pageImageView.setRotate(angle);
+            resetZoom();
             viewerCaptionLabel.setText(caption);
         } catch (IOException ex) {
             System.err.println("Could not decode TIFF for viewer: " + ex.getMessage());
