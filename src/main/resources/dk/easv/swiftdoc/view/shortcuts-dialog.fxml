@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.ColumnConstraints?>
+
+<DialogPane xmlns:fx="http://javafx.com/fxml"
+            fx:id="dialogPane"
+            styleClass="dialog-root">
+    <headerText>Keyboard Shortcuts</headerText>
+    <contentText>All available shortcuts in SwiftDoc.</contentText>
+
+    <content>
+        <VBox spacing="14.0" styleClass="dialog-content">
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Scanning" styleClass="section-title"/>
+                <GridPane hgap="16.0" vgap="6.0">
+                    <columnConstraints>
+                        <ColumnConstraints prefWidth="120.0"/>
+                        <ColumnConstraints prefWidth="280.0"/>
+                    </columnConstraints>
+                    <Label text="F1"      style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label text="New scan session"                       GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="F2"      style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label text="Scan next page"                         GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Viewer" styleClass="section-title"/>
+                <GridPane hgap="16.0" vgap="6.0">
+                    <columnConstraints>
+                        <ColumnConstraints prefWidth="120.0"/>
+                        <ColumnConstraints prefWidth="280.0"/>
+                    </columnConstraints>
+                    <Label text="Page Up"   style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label text="Previous file in sidebar"                  GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="Page Down" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label text="Next file in sidebar"                      GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                    <Label text="F3"        style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label text="Rotate left 90°"                           GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                    <Label text="F4"        style="-fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <Label text="Rotate right 90°"                          GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+L"    style="-fx-font-weight: bold;" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                    <Label text="Rotate left 90°"                           GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+R"    style="-fx-font-weight: bold;" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                    <Label text="Rotate right 90°"                          GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+0"    style="-fx-font-weight: bold;" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                    <Label text="Reset rotation"                            GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Other" styleClass="section-title"/>
+                <GridPane hgap="16.0" vgap="6.0">
+                    <columnConstraints>
+                        <ColumnConstraints prefWidth="120.0"/>
+                        <ColumnConstraints prefWidth="280.0"/>
+                    </columnConstraints>
+                    <Label text="Ctrl+S"    style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label text="Open Export dialog"                        GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+F"    style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label text="Focus sidebar search"                      GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+        </VBox>
+    </content>
+
+    <buttonTypes>
+        <ButtonType text="Close" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
+</DialogPane>
