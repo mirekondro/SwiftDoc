@@ -689,7 +689,7 @@ public class MainController {
         for (DocumentBranch docBranch : branch.documents()) {
             boxItem.getChildren().add(buildDocumentItem(docBranch));
         }
-        boxItem.setExpanded(true);
+        boxItem.setExpanded(false);
         return boxItem;
     }
 
@@ -1156,6 +1156,26 @@ public class MainController {
     private void onSaveCommand() {
         openExportDialog();
     }
+
+    @FXML
+    private void onShowShortcutsCommand() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    MainController.class.getResource(
+                            "/dk/easv/swiftdoc/view/shortcuts-dialog.fxml"));
+            DialogPane pane = loader.load();
+            applyDialogTheme(pane);
+
+            Dialog<?> dialog = new Dialog<>();
+            dialog.setDialogPane(pane);
+            dialog.setTitle("Keyboard Shortcuts");
+            dialog.showAndWait();
+        } catch (IOException ex) {
+            System.err.println("Failed to load shortcuts dialog: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
 
     @FXML
     private void onExportMenuCommand() {

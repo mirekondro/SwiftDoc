@@ -46,7 +46,6 @@ public class NewScanDialogController {
     @FXML private TextField boxNameTextField;
     @FXML private Label boxNameErrorLabel;
     @FXML private CheckBox duplicateDetectionCheckBox;
-    @FXML private CheckBox separateDocumentsCheckBox;
     @FXML private TextArea notesTextArea;
 
     @FXML private ButtonType startScanButtonType;
@@ -221,8 +220,8 @@ public class NewScanDialogController {
         summary.append("Options:\n");
         summary.append("  Duplicate detection:   ")
                 .append(profile != null && profile.isDuplicateDetectionEnabled()).append("\n");
-        summary.append("  Separate document per page: ")
-                .append(separateDocumentsCheckBox.isSelected()).append("\n");
+        summary.append("  Separate document per page: ");
+
         if (notes != null && !notes.isBlank()) {
             summary.append("\nNotes:\n").append(notes.trim());
         }

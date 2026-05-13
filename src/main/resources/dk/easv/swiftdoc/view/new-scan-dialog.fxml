@@ -44,11 +44,9 @@
                     </GridPane>
                 </VBox>
 
-                <VBox prefWidth="260.0" spacing="8.0" styleClass="dialog-card">
-                    <Label styleClass="section-title" text="Scan Options" />
-
-                    <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable duplicate detection" />
-                    <CheckBox fx:id="separateDocumentsCheckBox" selected="false" text="Create separate document per page" />
+                <VBox spacing="8.0" prefWidth="260.0" styleClass="dialog-card">
+                    <Label text="Scan Options" styleClass="section-title"/>
+                    <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable duplicate detection"/>
                 </VBox>
             </HBox>
 

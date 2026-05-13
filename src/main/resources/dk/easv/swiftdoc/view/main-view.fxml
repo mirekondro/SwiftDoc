@@ -39,7 +39,7 @@
             </VBox>
         </HBox>
         <HBox spacing="10.0" styleClass="header-cards" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT">
-            <VBox spacing="4.0" styleClass="header-card">
+            <VBox spacing="4.0" styleClass="header-card header-card-session">
                 <Label text="Session" styleClass="header-card-title"/>
                 <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true" styleClass="header-card-value"/>
             </VBox>
@@ -55,17 +55,17 @@
         <!-- LEFT COLUMN: controls + status + shortcuts -->
         <VBox alignment="TOP_CENTER" spacing="12.0" prefWidth="230.0" styleClass="panel panel-left">
             <VBox spacing="8.0" styleClass="card">
-                <Button text="New" onAction="#onNewCommand" maxWidth="Infinity" styleClass="btn">
+                <Button text="New (F1)" onAction="#onNewCommand" maxWidth="Infinity" styleClass="btn">
                     <graphic>
                         <SVGPath content="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z" styleClass="icon"/>
                     </graphic>
                 </Button>
-                <Button text="Save" onAction="#onSaveCommand" maxWidth="Infinity" styleClass="btn btn-accent">
+                <Button text="Save (Ctrl+S)" onAction="#onSaveCommand" maxWidth="Infinity" styleClass="btn btn-accent">
                     <graphic>
                         <SVGPath content="M5 3h14a2 2 0 0 1 2 2v16H3V5a2 2 0 0 1 2-2zm2 2v4h10V5H7zm0 8v6h10v-6H7z" styleClass="icon"/>
                     </graphic>
                 </Button>
-                <Button fx:id="scanButton" text="Scan" onAction="#onScanCommand"
+                <Button fx:id="scanButton" text="Scan (F2)" onAction="#onScanCommand"
                         disable="true" maxWidth="Infinity" styleClass="btn btn-primary">
                     <graphic>
                         <SVGPath content="M3 7V3h4v2H5v2H3zm14-4h4v4h-2V5h-2V3zM3 21v-4h2v2h2v2H3zm16-2h2v-2h2v4h-4v-2zM6 11h12v2H6z" styleClass="icon"/>
@@ -79,9 +79,7 @@
             </VBox>
 
             <VBox spacing="6.0" styleClass="card">
-                <Label text="Shortcuts" styleClass="section-title"/>
-                <Label text="F1  – New scan&#10;F2  – Scan&#10;PageUp – Previous file&#10;PageDown – Next file&#10;Ctrl+R – Rotate right&#10;Ctrl+L – Rotate left&#10;Ctrl+0 – Reset rotation&#10;Ctrl+S – Export&#10;Ctrl+F – Focus search"
-                       wrapText="true" styleClass="muted"/>
+                <Button text="Shortcuts" onAction="#onShowShortcutsCommand" maxWidth="Infinity" styleClass="btn"/>
             </VBox>
         </VBox>
 
