@@ -2,6 +2,7 @@
 
 .app-root {
     -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 14px;
     -fx-background-color: #f2f5ff;
     -fx-padding: 14;
 }
@@ -33,13 +34,13 @@
 }
 
 .app-title {
-    -fx-font-size: 20px;
+    -fx-font-size: 22px;
     -fx-font-weight: 800;
     -fx-text-fill: #22325a;
 }
 
 .app-subtitle {
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
     -fx-text-fill: #6b7aa7;
 }
 
@@ -73,8 +74,35 @@
     -fx-min-width: 170;
 }
 
+.header-card-session {
+    -fx-background-color: linear-gradient(to right, #eaf1ff, #ffffff);
+    -fx-border-color: #5d8bff;
+    -fx-border-width: 1.5;
+    -fx-min-width: 240;
+}
+
+.header-card-session .header-card-title {
+    -fx-text-fill: #4a6bff;
+}
+
+.header-card-session .header-card-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+/* Dark theme equivalent for the session card */
+.theme-dark .header-card-session {
+    -fx-background-color: linear-gradient(to right, #1a2845, #111827);
+    -fx-border-color: #5d8bff;
+}
+
+.theme-dark .header-card-session .header-card-title {
+    -fx-text-fill: #7aa2ff;
+}
+
+
 .header-card-title {
-    -fx-font-size: 11px;
+    -fx-font-size: 12px;
     -fx-text-fill: #7b88a8;
     -fx-font-weight: 700;
 }
@@ -106,13 +134,13 @@
 }
 
 .section-title {
-    -fx-font-size: 13px;
+    -fx-font-size: 14px;
     -fx-font-weight: 800;
     -fx-text-fill: #2a3b63;
 }
 
 .viewer-title {
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: 800;
     -fx-text-fill: #2a3b63;
 }
