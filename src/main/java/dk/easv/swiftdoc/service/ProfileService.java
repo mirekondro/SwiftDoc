@@ -29,6 +29,10 @@ public class ProfileService {
         return clientDAO.getAll();
     }
 
+    public List<ScanningProfile> getProfiles() throws SQLException {
+        return profileDAO.getAll();
+    }
+
     public ScanningProfile createProfile(String profileName, Client client,
                                          boolean duplicateDetectionEnabled) throws SQLException {
         if (client == null) {

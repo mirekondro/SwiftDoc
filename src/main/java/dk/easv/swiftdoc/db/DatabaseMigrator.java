@@ -20,7 +20,43 @@ public final class DatabaseMigrator {
             }
             ensureProfileColumns(connection);
             ensureDocumentColumns(connection);
+            ensureUsersTable(connection);
             migrated = true;
+        }
+    }
+
+    /**
+     * Mirrors src/main/resources/db/users-setup.sql so the app boots
+     * out-of-the-box. Re-running the script manually is still safe.
+     */
+    private static void ensureUsersTable(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            // Create table if it doesn't exist at all.
+            stmt.execute(
+                    "IF OBJECT_ID('dbo.Users', 'U') IS NULL "
+                            + "BEGIN "
+                            + "  CREATE TABLE dbo.Users ("
+                            + "    UserId INT IDENTITY(1,1) PRIMARY KEY, "
+                            + "    Username NVARCHAR(64) NOT NULL UNIQUE, "
+                            + "    PasswordHash NVARCHAR(128) NOT NULL DEFAULT '', "
+                            + "    Role NVARCHAR(16) NOT NULL DEFAULT 'USER'"
+                            + "  ); "
+                            + "END;");
+            // Add missing columns if table existed with an old schema.
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Users', 'PasswordHash') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Users ADD PasswordHash NVARCHAR(128) NOT NULL DEFAULT ''; END;");
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Users', 'Role') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Users ADD Role NVARCHAR(16) NOT NULL DEFAULT 'USER'; END;");
+            // Seed default accounts if none exist yet.
+            stmt.execute(
+                    "IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Username IN ('admin','user')) "
+                            + "BEGIN "
+                            + "  INSERT INTO dbo.Users (Username, PasswordHash, Role) VALUES "
+                            + "    ('admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'ADMIN'), "
+                            + "    ('user',  '04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb', 'USER'); "
+                            + "END;");
         }
     }
 

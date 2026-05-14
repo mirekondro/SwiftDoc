@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="dk.easv.swiftdoc.controller.LoginController"
+      onKeyPressed="#onKeyPressed"
+      spacing="14.0" prefWidth="380.0"
+      styleClass="app-root">
+
+    <VBox spacing="4.0">
+        <Label text="SwiftDoc" styleClass="app-title"/>
+        <Label text="Sign in to continue" styleClass="app-subtitle"/>
+    </VBox>
+
+    <VBox spacing="8.0" styleClass="dialog-card">
+        <Label text="Username" styleClass="section-title"/>
+        <TextField fx:id="usernameField" promptText="username"/>
+
+        <Label text="Password" styleClass="section-title"/>
+        <PasswordField fx:id="passwordField" promptText="password"/>
+
+        <Label fx:id="errorLabel" text="" wrapText="true"
+               style="-fx-text-fill: #cc0000;"/>
+    </VBox>
+
+    <HBox spacing="8.0" alignment="CENTER_RIGHT">
+        <Button text="Cancel" onAction="#onCancel" styleClass="btn"/>
+        <Button text="Sign in" onAction="#onLogin" defaultButton="true" styleClass="btn btn-primary"/>
+    </HBox>
+</VBox>

@@ -16,7 +16,6 @@
                         <Label styleClass="muted" text="Profile" />
                         <HBox spacing="8.0">
                             <ComboBox fx:id="profileComboBox" maxWidth="1.7976931348623157E308" promptText="Select a profile..." HBox.hgrow="ALWAYS" />
-                            <Button onAction="#onCreateProfile" styleClass="btn" text="Create" />
                         </HBox>
                     </VBox>
                     <VBox prefWidth="260.0" spacing="6.0" styleClass="dialog-card">
