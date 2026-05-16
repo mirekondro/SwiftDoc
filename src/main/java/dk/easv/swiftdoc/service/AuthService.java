@@ -24,6 +24,9 @@ public class AuthService {
         if (row.isEmpty()) {
             return Optional.empty();
         }
+        if (!row.get().user().isActive()) {
+            return Optional.empty();
+        }
         String expected = row.get().passwordHash();
         String actual = sha256(rawPassword);
         if (!expected.equalsIgnoreCase(actual)) {
@@ -44,6 +47,18 @@ public class AuthService {
             throw new IllegalArgumentException("Password is required.");
         }
         userDAO.create(username.trim(), sha256(rawPassword), role);
+    }
+
+    public void updateUser(int userId, String username, String rawPassword, Role role) throws SQLException {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username is required.");
+        }
+        String hash = rawPassword != null ? sha256(rawPassword) : null;
+        userDAO.update(userId, username.trim(), hash, role);
+    }
+
+    public void setUserActive(int userId, boolean active) throws SQLException {
+        userDAO.setActive(userId, active);
     }
 
     public void deleteUser(int userId) throws SQLException {

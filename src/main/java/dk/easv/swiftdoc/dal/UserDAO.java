@@ -15,11 +15,17 @@ import java.util.Optional;
 public class UserDAO {
 
     private static final String SELECT_BY_USERNAME =
-            "SELECT UserId, Username, PasswordHash, Role FROM dbo.Users WHERE Username = ?";
+            "SELECT UserId, Username, PasswordHash, Role, IsActive FROM dbo.Users WHERE Username = ?";
     private static final String SELECT_ALL =
-            "SELECT UserId, Username, Role FROM dbo.Users ORDER BY Role DESC, Username";
+            "SELECT UserId, Username, Role, IsActive FROM dbo.Users ORDER BY IsActive DESC, Role DESC, Username";
     private static final String INSERT =
-            "INSERT INTO dbo.Users (Username, PasswordHash, Role) VALUES (?, ?, ?)";
+            "INSERT INTO dbo.Users (Username, PasswordHash, Role, IsActive) VALUES (?, ?, ?, 1)";
+    private static final String UPDATE_WITH_PASSWORD =
+            "UPDATE dbo.Users SET Username=?, PasswordHash=?, Role=? WHERE UserId=?";
+    private static final String UPDATE_NO_PASSWORD =
+            "UPDATE dbo.Users SET Username=?, Role=? WHERE UserId=?";
+    private static final String SET_ACTIVE =
+            "UPDATE dbo.Users SET IsActive=? WHERE UserId=?";
     private static final String DELETE =
             "DELETE FROM dbo.Users WHERE UserId = ?";
 
@@ -34,7 +40,8 @@ public class UserDAO {
                 User user = new User(
                         rs.getInt("UserId"),
                         rs.getString("Username"),
-                        Role.valueOf(rs.getString("Role"))
+                        Role.valueOf(rs.getString("Role")),
+                        rs.getBoolean("IsActive")
                 );
                 return Optional.of(new AuthRow(user, rs.getString("PasswordHash")));
             }
@@ -50,7 +57,8 @@ public class UserDAO {
                 users.add(new User(
                         rs.getInt("UserId"),
                         rs.getString("Username"),
-                        Role.valueOf(rs.getString("Role"))
+                        Role.valueOf(rs.getString("Role")),
+                        rs.getBoolean("IsActive")
                 ));
             }
         }
@@ -63,6 +71,33 @@ public class UserDAO {
             stmt.setString(1, username);
             stmt.setString(2, passwordHash);
             stmt.setString(3, role.name());
+            stmt.executeUpdate();
+        }
+    }
+
+    public void update(int userId, String username, String passwordHash, Role role) throws SQLException {
+        boolean changePassword = passwordHash != null;
+        String sql = changePassword ? UPDATE_WITH_PASSWORD : UPDATE_NO_PASSWORD;
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            if (changePassword) {
+                stmt.setString(2, passwordHash);
+                stmt.setString(3, role.name());
+                stmt.setInt(4, userId);
+            } else {
+                stmt.setString(2, role.name());
+                stmt.setInt(3, userId);
+            }
+            stmt.executeUpdate();
+        }
+    }
+
+    public void setActive(int userId, boolean active) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SET_ACTIVE)) {
+            stmt.setBoolean(1, active);
+            stmt.setInt(2, userId);
             stmt.executeUpdate();
         }
     }

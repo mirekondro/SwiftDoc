@@ -21,6 +21,7 @@ public final class DatabaseMigrator {
             ensureProfileColumns(connection);
             ensureDocumentColumns(connection);
             ensureUsersTable(connection);
+            ensureUsersIsActive(connection);
             migrated = true;
         }
     }
@@ -57,6 +58,14 @@ public final class DatabaseMigrator {
                             + "    ('admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'ADMIN'), "
                             + "    ('user',  '04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb', 'USER'); "
                             + "END;");
+        }
+    }
+
+    private static void ensureUsersIsActive(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Users', 'IsActive') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Users ADD IsActive BIT NOT NULL DEFAULT 1 WITH VALUES; END;");
         }
     }
 
