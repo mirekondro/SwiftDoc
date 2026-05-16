@@ -4,6 +4,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -48,5 +49,14 @@
             <Button text="Cancel" onAction="#onCancelClicked" styleClass="btn"/>
         </HBox>
         <Label fx:id="messageLabel" text="" wrapText="true"/>
+
+        <!-- Profile access panel — shown only in edit mode -->
+        <VBox fx:id="profileAccessSection" spacing="6.0" visible="false" managed="false">
+            <Label text="Profile access" styleClass="section-title" style="-fx-font-size: 13;"/>
+            <Label text="Check profiles this user may access:" style="-fx-font-size: 11;"/>
+            <ScrollPane fitToWidth="true" prefHeight="180.0">
+                <VBox fx:id="profileCheckboxContainer" spacing="5.0" style="-fx-padding: 4;"/>
+            </ScrollPane>
+        </VBox>
     </VBox>
 </HBox>

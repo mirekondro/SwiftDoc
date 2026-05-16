@@ -924,6 +924,7 @@ public class MainController {
             DialogPane dialogPane = loader.load();
             applyDialogTheme(dialogPane);
             NewScanDialogController dialogController = loader.getController();
+            dialogController.setCurrentUser(currentUser);
 
             Dialog<?> dialog = new Dialog<>();
             dialog.setDialogPane(dialogPane);

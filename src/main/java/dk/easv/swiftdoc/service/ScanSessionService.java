@@ -39,6 +39,10 @@ public class ScanSessionService {
         return profileDAO.getAll();
     }
 
+    public List<ScanningProfile> getAvailableProfiles(int userId, boolean isAdmin) throws SQLException {
+        return isAdmin ? profileDAO.getAll() : profileDAO.getForUser(userId);
+    }
+
     /**
      * Start a new scanning session by creating a Box and its first Document.
      */

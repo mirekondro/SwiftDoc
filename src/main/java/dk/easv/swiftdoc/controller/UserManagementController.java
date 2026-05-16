@@ -1,5 +1,8 @@
 package dk.easv.swiftdoc.controller;
 
+import dk.easv.swiftdoc.dal.ProfileDAO;
+import dk.easv.swiftdoc.dal.UserProfileAccessDAO;
+import dk.easv.swiftdoc.model.ScanningProfile;
 import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.model.User.Role;
 import dk.easv.swiftdoc.service.AuthService;
@@ -9,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -17,13 +21,18 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class UserManagementController {
 
     private final AuthService authService = new AuthService();
+    private final ProfileDAO profileDAO = new ProfileDAO();
+    private final UserProfileAccessDAO accessDAO = new UserProfileAccessDAO();
 
     @FXML private TableView<User> usersTable;
     @FXML private TableColumn<User, String> colUsername;
@@ -35,6 +44,8 @@ public class UserManagementController {
     @FXML private Label formTitleLabel;
     @FXML private Label messageLabel;
     @FXML private Button deactivateButton;
+    @FXML private VBox profileAccessSection;
+    @FXML private VBox profileCheckboxContainer;
 
     private User currentAdmin;
     private User editingUser;
@@ -114,6 +125,7 @@ public class UserManagementController {
         passwordField.clear();
         roleCombo.getSelectionModel().select(selected.getRole());
         messageLabel.setText("");
+        showProfileAccess(selected.getUserId());
     }
 
     @FXML
@@ -132,6 +144,13 @@ public class UserManagementController {
                 showMessage("User '" + username + "' created.", false);
             } else {
                 authService.updateUser(editingUser.getUserId(), username, password.isEmpty() ? null : password, role);
+                Set<Integer> selectedProfileIds = profileCheckboxContainer.getChildren().stream()
+                        .filter(n -> n instanceof CheckBox)
+                        .map(n -> (CheckBox) n)
+                        .filter(CheckBox::isSelected)
+                        .map(cb -> (Integer) cb.getUserData())
+                        .collect(Collectors.toSet());
+                accessDAO.setProfilesForUser(editingUser.getUserId(), selectedProfileIds);
                 showMessage("User '" + username + "' updated.", false);
             }
             clearForm();
@@ -191,6 +210,31 @@ public class UserManagementController {
         roleCombo.getSelectionModel().select(Role.USER);
         formTitleLabel.setText("Select a user or click Create");
         messageLabel.setText("");
+        profileCheckboxContainer.getChildren().clear();
+        profileAccessSection.setVisible(false);
+        profileAccessSection.setManaged(false);
+    }
+
+    private void showProfileAccess(int userId) {
+        profileCheckboxContainer.getChildren().clear();
+        try {
+            List<ScanningProfile> allProfiles = profileDAO.getAll();
+            Set<Integer> granted = accessDAO.getProfileIdsForUser(userId);
+            if (allProfiles.isEmpty()) {
+                profileCheckboxContainer.getChildren().add(new Label("No profiles exist yet."));
+            } else {
+                for (ScanningProfile p : allProfiles) {
+                    CheckBox cb = new CheckBox(p.toString());
+                    cb.setUserData(p.getProfileId());
+                    cb.setSelected(granted.contains(p.getProfileId()));
+                    profileCheckboxContainer.getChildren().add(cb);
+                }
+            }
+        } catch (SQLException ex) {
+            profileCheckboxContainer.getChildren().add(new Label("Could not load profiles: " + ex.getMessage()));
+        }
+        profileAccessSection.setVisible(true);
+        profileAccessSection.setManaged(true);
     }
 
     private boolean isSelf(User user) {

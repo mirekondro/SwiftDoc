@@ -40,6 +40,18 @@ BEGIN
          'USER');
 END;
 
+-- 4. UserProfileAccess: which profiles each user may access ---------------
+IF OBJECT_ID('dbo.UserProfileAccess', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.UserProfileAccess (
+        UserId    INT NOT NULL,
+        ProfileId INT NOT NULL,
+        CONSTRAINT PK_UserProfileAccess PRIMARY KEY (UserId, ProfileId),
+        CONSTRAINT FK_UPA_Users    FOREIGN KEY (UserId)    REFERENCES dbo.Users(UserId)    ON DELETE CASCADE,
+        CONSTRAINT FK_UPA_Profiles FOREIGN KEY (ProfileId) REFERENCES dbo.Profiles(ProfileId) ON DELETE CASCADE
+    );
+END;
+
 -- =====================================================================
 -- Verify
 -- =====================================================================

@@ -22,6 +22,7 @@ public final class DatabaseMigrator {
             ensureDocumentColumns(connection);
             ensureUsersTable(connection);
             ensureUsersIsActive(connection);
+            ensureUserProfileAccess(connection);
             migrated = true;
         }
     }
@@ -77,6 +78,24 @@ public final class DatabaseMigrator {
             stmt.execute(
                     "IF COL_LENGTH('dbo.Profiles', 'DuplicateDetectionEnabled') IS NULL "
                             + "BEGIN ALTER TABLE dbo.Profiles ADD DuplicateDetectionEnabled BIT NOT NULL DEFAULT 0; END;");
+        }
+    }
+
+    private static void ensureUserProfileAccess(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(
+                    "IF OBJECT_ID('dbo.UserProfileAccess', 'U') IS NULL "
+                            + "BEGIN "
+                            + "  CREATE TABLE dbo.UserProfileAccess ("
+                            + "    UserId    INT NOT NULL, "
+                            + "    ProfileId INT NOT NULL, "
+                            + "    CONSTRAINT PK_UserProfileAccess PRIMARY KEY (UserId, ProfileId), "
+                            + "    CONSTRAINT FK_UPA_Users FOREIGN KEY (UserId) "
+                            + "      REFERENCES dbo.Users(UserId) ON DELETE CASCADE, "
+                            + "    CONSTRAINT FK_UPA_Profiles FOREIGN KEY (ProfileId) "
+                            + "      REFERENCES dbo.Profiles(ProfileId) ON DELETE CASCADE "
+                            + "  ); "
+                            + "END;");
         }
     }
 

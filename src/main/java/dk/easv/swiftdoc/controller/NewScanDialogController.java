@@ -2,6 +2,7 @@ package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.model.Client;
 import dk.easv.swiftdoc.model.ScanningProfile;
+import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ProfileService;
 import dk.easv.swiftdoc.service.ScanSession;
 import dk.easv.swiftdoc.service.ScanSessionService;
@@ -39,6 +40,7 @@ public class NewScanDialogController {
 
     /** Result of the dialog. Null until Start Scan succeeds. */
     private ScanSession createdSession;
+    private User currentUser;
 
     @FXML private DialogPane dialogPane;
     @FXML private ComboBox<ScanningProfile> profileComboBox;
@@ -54,18 +56,27 @@ public class NewScanDialogController {
 
     @FXML
     private void initialize() {
-        loadProfiles();
         wireProfileSelection();
         wireValidation();
         wireButtons();
     }
 
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        loadProfiles();
+    }
+
     private void loadProfiles() {
         try {
-            List<ScanningProfile> profiles = sessionService.getAvailableProfiles();
+            List<ScanningProfile> profiles;
+            if (currentUser != null && !currentUser.isAdmin()) {
+                profiles = sessionService.getAvailableProfiles(currentUser.getUserId(), false);
+            } else {
+                profiles = sessionService.getAvailableProfiles();
+            }
             profileComboBox.setItems(FXCollections.observableArrayList(profiles));
             if (profiles.isEmpty()) {
-                profileDescriptionLabel.setText("No profiles available. Ask an admin to create one.");
+                profileDescriptionLabel.setText("No profiles available. Ask an admin to assign profiles to your account.");
             }
         } catch (SQLException ex) {
             showError("Could not load profiles", ex.getMessage());

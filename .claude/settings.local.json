@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__codegraph__codegraph_explore",
+      "Bash(grep -E \"\\\\.\\(java|xml\\)$\")",
+      "Bash(mvn compile *)"
+    ]
+  }
+}

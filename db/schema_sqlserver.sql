@@ -142,6 +142,17 @@ BEGIN
     );
 END;
 
+IF OBJECT_ID('dbo.UserProfileAccess', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.UserProfileAccess (
+        UserId    INT NOT NULL,
+        ProfileId INT NOT NULL,
+        CONSTRAINT PK_UserProfileAccess PRIMARY KEY (UserId, ProfileId),
+        CONSTRAINT FK_UPA_Users    FOREIGN KEY (UserId)    REFERENCES dbo.Users(UserId)    ON DELETE CASCADE,
+        CONSTRAINT FK_UPA_Profiles FOREIGN KEY (ProfileId) REFERENCES dbo.Profiles(ProfileId) ON DELETE CASCADE
+    );
+END;
+
 -- Helpful indexes for scan performance
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Documents_BoxId' AND object_id = OBJECT_ID('dbo.Documents'))
 BEGIN

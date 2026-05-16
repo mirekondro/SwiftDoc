@@ -34,6 +34,15 @@ public class ProfileDAO {
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
                     + "WHERE p.ProfileId = ?";
 
+    private static final String SELECT_FOR_USER =
+            "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
+                    + "c.ClientId, c.ClientName "
+                    + "FROM dbo.Profiles p "
+                    + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
+                    + "INNER JOIN dbo.UserProfileAccess upa ON upa.ProfileId = p.ProfileId "
+                    + "WHERE upa.UserId = ? "
+                    + "ORDER BY c.ClientName, p.ProfileName";
+
     private static final String INSERT_PROFILE =
             "INSERT INTO dbo.Profiles (ProfileName, ClientId, SplitRule, DuplicateDetectionEnabled) "
                     + "VALUES (?, ?, ?, ?)";
@@ -66,6 +75,20 @@ public class ProfileDAO {
                 return Optional.of(mapRow(rs));
             }
         }
+    }
+
+    public List<ScanningProfile> getForUser(int userId) throws SQLException {
+        List<ScanningProfile> profiles = new ArrayList<>();
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_FOR_USER)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    profiles.add(mapRow(rs));
+                }
+            }
+        }
+        return profiles;
     }
 
     public ScanningProfile create(String profileName, int clientId, String splitRule,
