@@ -200,6 +200,20 @@
     -fx-background-color: linear-gradient(to right, #f45aa8, #f2693d);
 }
 
+.btn-logout {
+    -fx-background-color: #e53e3e;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: 700;
+}
+
+.btn-logout:hover {
+    -fx-background-color: #c53030;
+}
+
+.btn-logout:pressed {
+    -fx-background-color: #9b2c2c;
+}
+
 .toggle {
     -fx-background-color: #ffffff;
     -fx-border-color: #d8e2fb;
@@ -402,6 +416,14 @@
 
 .theme-dark .btn-accent {
     -fx-background-color: linear-gradient(to right, #ff7cc3, #ff8a65);
+}
+
+.theme-dark .btn-logout {
+    -fx-background-color: #c53030;
+}
+
+.theme-dark .btn-logout:hover {
+    -fx-background-color: #9b2c2c;
 }
 
 .theme-dark .toggle {

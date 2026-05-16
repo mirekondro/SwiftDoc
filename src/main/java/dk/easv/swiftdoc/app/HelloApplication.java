@@ -2,6 +2,7 @@ package dk.easv.swiftdoc.app;
 
 import dk.easv.swiftdoc.controller.AdminController;
 import dk.easv.swiftdoc.controller.LoginController;
+import dk.easv.swiftdoc.controller.MainController;
 import dk.easv.swiftdoc.db.DBConnection;
 import dk.easv.swiftdoc.model.User;
 import javafx.application.Application;
@@ -19,9 +20,13 @@ import java.util.Optional;
 public class HelloApplication extends Application {
     @Override
     public void start(Stage stage) {
-        try {
-            testDatabaseConnectionInBackground();
+        Platform.setImplicitExit(false);
+        testDatabaseConnectionInBackground();
+        launchApp(stage);
+    }
 
+    private void launchApp(Stage stage) {
+        try {
             Optional<User> loggedIn = showLoginDialog();
             if (loggedIn.isEmpty()) {
                 Platform.exit();
@@ -32,7 +37,10 @@ public class HelloApplication extends Application {
             if (user.isAdmin()) {
                 showAdminScene(stage, user);
             } else {
-                showUserScene(stage, user);
+                showUserScene(stage, user, () -> {
+                    stage.hide();
+                    launchApp(stage);
+                });
             }
         } catch (Exception ex) {
             showStartupErrorDialog(ex);
@@ -58,12 +66,16 @@ public class HelloApplication extends Application {
         return controller.getAuthenticatedUser();
     }
 
-    private void showUserScene(Stage stage, User user) throws Exception {
+    private void showUserScene(Stage stage, User user, Runnable onLogout) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource(
                 "/dk/easv/swiftdoc/view/main-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
         scene.getStylesheets().add(
                 HelloApplication.class.getResource("/dk/easv/swiftdoc/view/app.css").toExternalForm());
+
+        MainController controller = fxmlLoader.getController();
+        controller.setCurrentUser(user);
+        controller.setOnLogout(onLogout);
 
         stage.setTitle("SwiftDoc — " + user.getUsername());
         stage.setScene(scene);

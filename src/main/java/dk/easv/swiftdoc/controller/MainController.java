@@ -4,6 +4,7 @@ import dk.easv.swiftdoc.dal.TiffImageLoader;
 import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.Document;
 import dk.easv.swiftdoc.model.File;
+import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ScanService;
 import dk.easv.swiftdoc.service.ScanService.ScanResult;
 import dk.easv.swiftdoc.service.ScanSession;
@@ -55,7 +56,24 @@ public class MainController {
     private final SidebarService sidebarService = new SidebarService();
     private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
 
+    private User currentUser;
+    private Runnable onLogout;
     private ScanSession activeSession;
+
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+    }
+
+    public void setOnLogout(Runnable callback) {
+        this.onLogout = callback;
+    }
+
+    @FXML
+    private void onLogoutCommand() {
+        if (onLogout != null) {
+            onLogout.run();
+        }
+    }
     private File currentlyDisplayedFile;
     private TreeItem<SidebarNode> draggedTreeItem;
 

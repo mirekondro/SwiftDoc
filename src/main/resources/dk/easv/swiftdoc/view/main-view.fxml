@@ -48,6 +48,7 @@
                 <Label fx:id="counterLabel" text="Files scanned: 0" styleClass="header-card-value"/>
             </VBox>
             <ToggleButton fx:id="themeToggle" text="Dark" onAction="#onThemeToggle" styleClass="toggle"/>
+            <Button text="Log Out" onAction="#onLogoutCommand" styleClass="btn btn-logout"/>
         </HBox>
     </HBox>
 
