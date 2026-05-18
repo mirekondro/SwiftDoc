@@ -17,17 +17,20 @@ package dk.easv.swiftdoc.model;
 public class Document {
 
     public enum Status {
-        NEW("NEW", "New"),
-        IN_PROGRESS("IN_PROGRESS", "In progress"),
-        ON_HOLD("ON_HOLD", "On hold"),
-        DONE("DONE", "Done");
+        NEW("NEW", "New", "status-new"),
+        IN_PROGRESS("IN_PROGRESS", "In progress", "status-in-progress"),
+        ON_HOLD("ON_HOLD", "On hold", "status-on-hold"),
+        DONE("DONE", "Done", "status-done"),
+        EXPORTED("EXPORTED", "Exported", "status-exported");
 
         private final String dbValue;
         private final String label;
+        private final String cssClass;
 
-        Status(String dbValue, String label) {
+        Status(String dbValue, String label, String cssClass) {
             this.dbValue = dbValue;
             this.label = label;
+            this.cssClass = cssClass;
         }
 
         public String dbValue() {
@@ -36,6 +39,10 @@ public class Document {
 
         public String label() {
             return label;
+        }
+
+        public String cssClass() {
+            return cssClass;
         }
 
         public static Status fromDb(String value) {
@@ -50,6 +57,7 @@ public class Document {
             return NEW;
         }
     }
+
 
     private int documentId;
     private int boxId;

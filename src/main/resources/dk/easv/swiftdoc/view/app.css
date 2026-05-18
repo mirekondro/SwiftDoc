@@ -288,13 +288,29 @@
     -fx-padding: 2 6 2 6;
 }
 
-.status-rendered {
-    -fx-background-color: #22c55e;
+.status-new {
+    -fx-background-color: #94a3b8;  /* slate gray — untouched */
 }
 
-.status-pending {
-    -fx-background-color: #94a3b8;
+.status-in-progress {
+    -fx-background-color: #4f8dff;  /* blue — active work */
 }
+
+.status-on-hold {
+    -fx-background-color: #f59e0b;  /* amber — blocked */
+}
+
+.status-done {
+    -fx-background-color: #6366f1;  /* indigo — ready to export */
+}
+
+.status-exported {
+    -fx-background-color: #22c55e;  /* green — work complete */
+}
+
+/* Aliases for old class names — kept for safety, harmless if unused */
+.status-rendered { -fx-background-color: #22c55e; }
+.status-pending  { -fx-background-color: #94a3b8; }
 
 .dialog-root {
     -fx-background-color: #ffffff;

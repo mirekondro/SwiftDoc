@@ -45,10 +45,8 @@ import javafx.scene.control.TextField;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 public class MainController {
 
@@ -412,7 +410,7 @@ public class MainController {
                     container.getStyleClass().setAll("sidebar-cell");
                     textLabel.getStyleClass().setAll("sidebar-cell-text");
                     textLabel.setText(item.toString());
-                    RenderStatus status = getRenderStatus(item, getTreeItem());
+                    Document.Status status = resolveBadgeStatus(item);
                     applyBadge(badgeLabel, status);
                     setText(null);
                     setGraphic(container);
@@ -512,74 +510,83 @@ public class MainController {
         worker.start();
     }
 
-    private enum RenderStatus {
-        RENDERED("Rendered", "status-rendered"),
-        NOT_RENDERED("Not rendered", "status-pending");
-
-        private final String label;
-        private final String styleClass;
-
-        RenderStatus(String label, String styleClass) {
-            this.label = label;
-            this.styleClass = styleClass;
-        }
-    }
-
-    private RenderStatus getRenderStatus(SidebarNode node, TreeItem<SidebarNode> treeItem) {
+    private Document.Status resolveBadgeStatus(SidebarNode node) {
         if (node == null || node.kind() == null) {
-            return RenderStatus.NOT_RENDERED;
+            return null;
         }
         return switch (node.kind()) {
-            case FILE -> renderedDocumentIds.contains(node.file().getDocumentId())
-                    ? RenderStatus.RENDERED
-                    : RenderStatus.NOT_RENDERED;
-            case DOCUMENT -> renderedDocumentIds.contains(node.document().getDocumentId())
-                    ? RenderStatus.RENDERED
-                    : RenderStatus.NOT_RENDERED;
-            case BOX -> isBoxRendered(treeItem) ? RenderStatus.RENDERED : RenderStatus.NOT_RENDERED;
+            case FILE -> findDocumentForFile(node.file());
+            case DOCUMENT -> node.document().getStatus();
+            case BOX -> resolveBoxStatus(node.box());
         };
     }
 
-    private boolean isBoxRendered(TreeItem<SidebarNode> boxItem) {
-        if (boxItem == null || boxItem.getChildren().isEmpty()) {
-            return false;
-        }
-        for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
-            SidebarNode value = docItem.getValue();
-            if (value == null || value.kind() != SidebarNode.Kind.DOCUMENT) {
+    /**
+     * Box-level status:
+     *   - If the box has NO documents at all → no badge
+     *   - If every Document is EXPORTED → EXPORTED
+     *   - Otherwise → no badge
+     *
+     * The export flow always processes a whole box, so "partly exported" isn't
+     * a normal state. Showing just the final state keeps the sidebar clean.
+     */
+    private Document.Status resolveBoxStatus(dk.easv.swiftdoc.model.Box box) {
+        if (box == null) return null;
+
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() != box.getBoxId()) {
                 continue;
             }
-            if (!renderedDocumentIds.contains(value.document().getDocumentId())) {
-                return false;
+            List<DocumentBranch> docs = boxBranch.documents();
+            if (docs.isEmpty()) {
+                return null; // empty box, no badge
+            }
+            for (DocumentBranch docBranch : docs) {
+                if (docBranch.document().getStatus() != Document.Status.EXPORTED) {
+                    return null; // at least one doc is not exported → no box badge
+                }
+            }
+            return Document.Status.EXPORTED;
+        }
+        return null;
+    }
+
+    /**
+     * Look up the Document that owns a given File and return its status.
+     * Returns NEW as a fallback if the document can't be found (defensive —
+     * shouldn't happen in practice).
+     */
+    private Document.Status findDocumentForFile(File file) {
+        if (file == null) return Document.Status.NEW;
+        for (BoxBranch boxBranch : allBranches) {
+            for (DocumentBranch docBranch : boxBranch.documents()) {
+                if (docBranch.document().getDocumentId() == file.getDocumentId()) {
+                    return docBranch.document().getStatus();
+                }
             }
         }
-        return true;
+        return Document.Status.NEW;
     }
 
-    private void applyBadge(Label badgeLabel, RenderStatus status) {
-        if (badgeLabel == null || status == null) {
+    /**
+     * Apply a status badge to the label. If status is null (e.g. for Box
+     * nodes), the badge is hidden so it doesn't take up space.
+     */
+    private void applyBadge(Label badgeLabel, Document.Status status) {
+        if (badgeLabel == null) {
             return;
         }
-        badgeLabel.setText(status.label);
-        badgeLabel.getStyleClass().setAll("status-badge", status.styleClass);
-    }
-
-    private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
-        if (!isFileItem(dragged) || target == null || target == dragged) {
-            return false;
+        if (status == null) {
+            badgeLabel.setText("");
+            badgeLabel.setVisible(false);
+            badgeLabel.setManaged(false);
+            badgeLabel.getStyleClass().setAll("status-badge");
+            return;
         }
-        TreeItem<SidebarNode> sourceDoc = dragged.getParent();
-        if (!isDocumentItem(sourceDoc)) {
-            return false;
-        }
-        TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
-        if (!isDocumentItem(targetDoc)) {
-            return false;
-        }
-        if (sourceDoc == targetDoc) {
-            return true;
-        }
-        return isSameBox(sourceDoc, targetDoc);
+        badgeLabel.setVisible(true);
+        badgeLabel.setManaged(true);
+        badgeLabel.setText(status.label());
+        badgeLabel.getStyleClass().setAll("status-badge", status.cssClass());
     }
 
     private boolean moveDraggedFile(TreeItem<SidebarNode> target) {
@@ -642,6 +649,24 @@ public class MainController {
             return target.getParent();
         }
         return null;
+    }
+
+    private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
+        if (!isFileItem(dragged) || target == null || target == dragged) {
+            return false;
+        }
+        TreeItem<SidebarNode> sourceDoc = dragged.getParent();
+        if (!isDocumentItem(sourceDoc)) {
+            return false;
+        }
+        TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+        if (!isDocumentItem(targetDoc)) {
+            return false;
+        }
+        if (sourceDoc == targetDoc) {
+            return true;
+        }
+        return isSameBox(sourceDoc, targetDoc);
     }
 
     private boolean isSameBox(TreeItem<SidebarNode> sourceDocItem, TreeItem<SidebarNode> targetDocItem) {
@@ -1218,7 +1243,7 @@ public class MainController {
     }
 
     private final ExportService exportService = new ExportService();
-    private final Set<Integer> renderedDocumentIds = new HashSet<>();
+
 
     @FXML
     private void onSaveCommand() {
@@ -1356,10 +1381,11 @@ public class MainController {
     }
 
     private void showExportResult(ExportResult result) {
-        if (result != null && result.exportedDocumentIds() != null) {
-            renderedDocumentIds.addAll(result.exportedDocumentIds());
-            sidebarTree.refresh();
+        if (result != null && result.exportedDocumentIds() != null
+                && !result.exportedDocumentIds().isEmpty()) {
+            markDocumentsAsExportedAsync(result.exportedDocumentIds());
         }
+
 
         StringBuilder summary = new StringBuilder();
         summary.append("Wrote ").append(result.filesWritten())
@@ -1386,6 +1412,63 @@ public class MainController {
     public ScanSession getActiveSession() {
         return activeSession;
     }
+
+    private void markDocumentsAsExportedAsync(List<Integer> exportedDocumentIds) {
+        // Snapshot current statuses for rollback if any DB write fails.
+        java.util.Map<Integer, Document.Status> previous = new java.util.HashMap<>();
+        for (Integer docId : exportedDocumentIds) {
+            Document doc = findDocumentById(docId);
+            if (doc != null) {
+                previous.put(docId, doc.getStatus());
+                doc.setStatus(Document.Status.EXPORTED);
+            }
+        }
+        sidebarTree.refresh();
+
+        Thread worker = new Thread(() -> {
+            try {
+                for (Integer docId : exportedDocumentIds) {
+                    sidebarService.updateDocumentStatus(docId, Document.Status.EXPORTED);
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    // Roll back model changes.
+                    for (java.util.Map.Entry<Integer, Document.Status> entry : previous.entrySet()) {
+                        Document doc = findDocumentById(entry.getKey());
+                        if (doc != null) {
+                            doc.setStatus(entry.getValue());
+                        }
+                    }
+                    sidebarTree.refresh();
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("Status update failed");
+                    alert.setHeaderText("Exported, but could not flag documents as exported");
+                    alert.setContentText("The files were written to disk successfully, but "
+                            + "their status in the database could not be updated.\n\n"
+                            + "Details: " + ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "mark-exported-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Find a Document by id in the in-memory branch list.
+     */
+    private Document findDocumentById(int documentId) {
+        for (BoxBranch boxBranch : allBranches) {
+            for (DocumentBranch docBranch : boxBranch.documents()) {
+                if (docBranch.document().getDocumentId() == documentId) {
+                    return docBranch.document();
+                }
+            }
+        }
+        return null;
+    }
+
 
     @FXML
     private void onThemeToggle() {
