@@ -874,18 +874,26 @@ public class MainController {
         }
     }
 
-    private void addDocumentToSidebar(Document doc) {
-        // Update the source-of-truth.
+    private void addDocumentToSidebar(Document doc, File firstFile) {
+        // Update source-of-truth.
         for (BoxBranch boxBranch : allBranches) {
             if (boxBranch.box().getBoxId() == doc.getBoxId()) {
-                boxBranch.documents().add(new DocumentBranch(doc, new ArrayList<>()));
+                List<File> files = new ArrayList<>();
+                if (firstFile != null) {
+                    files.add(firstFile);
+                }
+                boxBranch.documents().add(new DocumentBranch(doc, files));
                 break;
             }
         }
+
         // Update the visible tree.
         TreeItem<SidebarNode> boxItem = findBoxItem(doc.getBoxId());
         if (boxItem != null) {
             TreeItem<SidebarNode> docItem = new TreeItem<>(SidebarNode.forDocument(doc));
+            if (firstFile != null) {
+                docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(firstFile)));
+            }
             docItem.setExpanded(true);
             boxItem.getChildren().add(docItem);
         }
@@ -1049,7 +1057,7 @@ public class MainController {
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );
-                    addDocumentToSidebar(r.newDocument());
+                    addDocumentToSidebar(r.newDocument(), r.savedFile());
                 }
             }
         }
