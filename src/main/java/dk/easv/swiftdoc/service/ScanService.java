@@ -102,11 +102,31 @@ public class ScanService {
 
         if (barcode.isPresent()) {
             String barcodeValue = barcode.get();
+
+            // 1. Start a new Document with this barcode.
             Document newDoc = documentDAO.create(session.getBox().getBoxId(), barcodeValue);
             session.setCurrentDocument(newDoc);
-            return new ScanResult(Kind.DOCUMENT_SPLIT, tiff.data(), null, newDoc, barcodeValue);
+
+            // 2. Save the barcode TIFF itself as File #1 of the new Document.
+            //    The separator sheet is part of the archival record — operators
+            //    can verify the barcode value against the actual scanned image.
+            File barcodeFile = fileDAO.create(
+                    newDoc.getDocumentId(),
+                    session.getBox().getBoxId(),
+                    tiff.data()
+            );
+            session.incrementFileCount();
+
+            return new ScanResult(
+                    Kind.DOCUMENT_SPLIT,
+                    tiff.data(),
+                    barcodeFile,
+                    newDoc,
+                    barcodeValue
+            );
         }
 
+        // Non-barcode page: append as a File under the current Document.
         File saved = fileDAO.create(
                 session.getCurrentDocument().getDocumentId(),
                 session.getBox().getBoxId(),
