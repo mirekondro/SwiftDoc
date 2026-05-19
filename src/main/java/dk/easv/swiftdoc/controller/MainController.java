@@ -132,6 +132,59 @@ public class MainController {
     }
 
     @FXML
+    private void onCustomRotationCommand() {
+        if (currentlyDisplayedFile == null) {
+            viewerCaptionLabel.setText("Open a file first, then rotate it.");
+            return;
+        }
+
+        File file = currentlyDisplayedFile;
+        int originalAngle = file.getRotationAngle();
+
+        try {
+            FXMLLoader loader = new FXMLLoader(MainController.class.getResource(
+                    "/dk/easv/swiftdoc/view/custom-rotation-dialog.fxml"));
+            DialogPane pane = loader.load();
+            applyDialogTheme(pane);
+            CustomRotationDialogController dialogController = loader.getController();
+
+            // Live preview: while the dialog is open, rotate the viewer in
+            // real-time as the user drags or types. Don't touch the model
+            // or the DB until Apply.
+            dialogController.configure(originalAngle, angle -> {
+                pageImageView.setRotate(angle);
+                viewerCaptionLabel.setText("Rotation: " + angle + "° (preview)");
+            });
+
+            Dialog<?> dialog = new Dialog<>();
+            dialog.setDialogPane(pane);
+            dialog.setTitle("Custom Rotation");
+            dialog.showAndWait();
+
+            Integer applied = dialogController.getFinalAngle();
+            if (applied == null) {
+                // Cancelled — roll viewer back to whatever rotation we had
+                // before opening the dialog.
+                pageImageView.setRotate(originalAngle);
+                viewerCaptionLabel.setText("Rotation: " + originalAngle + "°");
+                return;
+            }
+
+            // Persist via the same code path as the 90° buttons (optimistic
+            // model+viewer update, DB write on a background thread, rollback
+            // on failure).
+            applyRotationToFile(file, applied);
+
+        } catch (IOException ex) {
+            System.err.println("Failed to load custom rotation dialog: " + ex.getMessage());
+            ex.printStackTrace();
+            // Restore viewer to original in case preview already changed it.
+            pageImageView.setRotate(originalAngle);
+        }
+    }
+
+
+    @FXML
     private void onRotateLeftCommand() {
         rotateViewer(-90);
     }
