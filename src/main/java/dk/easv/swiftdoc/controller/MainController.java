@@ -221,59 +221,70 @@ public class MainController {
 
     @FXML
     private void onKeyPressed(KeyEvent event) {
-        if (event.getCode() == KeyCode.F1) {
+        KeyCode code = event.getCode();
+
+        if (code == KeyCode.F1) {
             onNewCommand();
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.F2) {
+        if (code == KeyCode.F2) {
             onScanCommand();
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.PAGE_UP) {
+        if (code == KeyCode.PAGE_UP) {
             selectAdjacentFile(-1);
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.PAGE_DOWN) {
+        if (code == KeyCode.PAGE_DOWN) {
             selectAdjacentFile(1);
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.T) {
+        if (event.isControlDown() && code == KeyCode.T) {
             onCustomRotationCommand();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.DIGIT0) {
+        // Reset rotation: Ctrl+0 — accept both main-row and numpad
+        if (event.isControlDown()
+                && (code == KeyCode.DIGIT0 || code == KeyCode.NUMPAD0)) {
             resetViewerRotation();
             event.consume();
             return;
         }
-        // Ctrl+= and Ctrl++ both produce KeyCode.EQUALS (with/without Shift).
-        if (event.isControlDown() && event.getCode() == KeyCode.EQUALS) {
+        // Zoom in: Ctrl++ / Ctrl+= — main row produces EQUALS or PLUS,
+        // numpad produces ADD
+        if (event.isControlDown()
+                && (code == KeyCode.EQUALS || code == KeyCode.PLUS
+                || code == KeyCode.ADD)) {
             onZoomInCommand();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.MINUS) {
+        // Zoom out: Ctrl+- — main row produces MINUS, numpad produces SUBTRACT
+        if (event.isControlDown()
+                && (code == KeyCode.MINUS || code == KeyCode.SUBTRACT)) {
             onZoomOutCommand();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.DIGIT1) {
+        // Reset zoom: Ctrl+1 — accept both main-row and numpad
+        if (event.isControlDown()
+                && (code == KeyCode.DIGIT1 || code == KeyCode.NUMPAD1)) {
             onResetZoomCommand();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.F) {
+        if (event.isControlDown() && code == KeyCode.F) {
             sidebarSearchField.requestFocus();
             sidebarSearchField.selectAll();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.S) {
+        if (event.isControlDown() && code == KeyCode.S) {
             onSaveCommand();
             event.consume();
         }
