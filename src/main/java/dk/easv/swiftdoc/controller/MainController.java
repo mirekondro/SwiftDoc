@@ -184,20 +184,7 @@ public class MainController {
     }
 
 
-    @FXML
-    private void onRotateLeftCommand() {
-        rotateViewer(-90);
-    }
 
-    @FXML
-    private void onRotateRightCommand() {
-        rotateViewer(90);
-    }
-
-    @FXML
-    private void onRotate180Command() {
-        rotateViewer(180);
-    }
 
     @FXML
     private void onResetRotationCommand() {
@@ -244,16 +231,6 @@ public class MainController {
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.F3) {
-            rotateViewer(-90);
-            event.consume();
-            return;
-        }
-        if (event.getCode() == KeyCode.F4) {
-            rotateViewer(90);
-            event.consume();
-            return;
-        }
         if (event.getCode() == KeyCode.PAGE_UP) {
             selectAdjacentFile(-1);
             event.consume();
@@ -264,18 +241,29 @@ public class MainController {
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.R) {
-            rotateViewer(90);
-            event.consume();
-            return;
-        }
-        if (event.isControlDown() && event.getCode() == KeyCode.L) {
-            rotateViewer(-90);
+        if (event.isControlDown() && event.getCode() == KeyCode.T) {
+            onCustomRotationCommand();
             event.consume();
             return;
         }
         if (event.isControlDown() && event.getCode() == KeyCode.DIGIT0) {
             resetViewerRotation();
+            event.consume();
+            return;
+        }
+        // Ctrl+= and Ctrl++ both produce KeyCode.EQUALS (with/without Shift).
+        if (event.isControlDown() && event.getCode() == KeyCode.EQUALS) {
+            onZoomInCommand();
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && event.getCode() == KeyCode.MINUS) {
+            onZoomOutCommand();
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && event.getCode() == KeyCode.DIGIT1) {
+            onResetZoomCommand();
             event.consume();
             return;
         }

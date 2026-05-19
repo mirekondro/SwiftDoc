@@ -40,16 +40,26 @@
                     <Label text="Previous file in sidebar"                  GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                     <Label text="Page Down" style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                     <Label text="Next file in sidebar"                      GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-                    <Label text="F3"        style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                    <Label text="Rotate left 90°"                           GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-                    <Label text="F4"        style="-fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                    <Label text="Rotate right 90°"                          GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-                    <Label text="Ctrl+L"    style="-fx-font-weight: bold;" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                    <Label text="Rotate left 90°"                           GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-                    <Label text="Ctrl+R"    style="-fx-font-weight: bold;" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                    <Label text="Rotate right 90°"                          GridPane.rowIndex="5" GridPane.columnIndex="1"/>
-                    <Label text="Ctrl+0"    style="-fx-font-weight: bold;" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
-                    <Label text="Reset rotation"                            GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+T"    style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label text="Open custom rotation dialog"               GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+0"    style="-fx-font-weight: bold;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                    <Label text="Reset rotation"                            GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                </GridPane>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Zoom" styleClass="section-title"/>
+                <GridPane hgap="16.0" vgap="6.0">
+                    <columnConstraints>
+                        <ColumnConstraints prefWidth="120.0"/>
+                        <ColumnConstraints prefWidth="280.0"/>
+                    </columnConstraints>
+                    <Label text="Ctrl++"    style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                    <Label text="Zoom in"                                   GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+-"    style="-fx-font-weight: bold;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                    <Label text="Zoom out"                                  GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                    <Label text="Ctrl+1"    style="-fx-font-weight: bold;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                    <Label text="Reset zoom"                                GridPane.rowIndex="2" GridPane.columnIndex="1"/>
                 </GridPane>
             </VBox>
 

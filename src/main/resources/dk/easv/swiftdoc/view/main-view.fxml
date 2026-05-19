@@ -110,43 +110,27 @@
 
             <!-- Rotate toolbar -->
             <HBox spacing="8.0" styleClass="toolbar">
-                <Button text="Rotate left" onAction="#onRotateLeftCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M12 5a7 7 0 1 1-6.5 9.5h2.3A5 5 0 1 0 12 7h2V4l-4 3 4 3V7z" styleClass="icon"/>
-                    </graphic>
-                </Button>
-                <Button text="Rotate right" onAction="#onRotateRightCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M12 5a7 7 0 1 0 6.5 9.5h-2.3A5 5 0 1 1 12 7h-2V4l4 3-4 3V7z" styleClass="icon"/>
-                    </graphic>
-                </Button>
-                <Button text="Rotate 180°" onAction="#onRotate180Command" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M4 12a8 8 0 1 1 16 0h-2a6 6 0 1 0-12 0h3l-4 4-4-4h3z" styleClass="icon"/>
-                    </graphic>
-                </Button>
-                <Button text="Reset" onAction="#onResetRotationCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M6 4h12v4H6V4zm0 6h12v10H6V10zm2 2v6h8v-6H8z" styleClass="icon"/>
-                    </graphic>
-                </Button>
-                <Button text="Custom..." onAction="#onCustomRotationCommand" styleClass="btn">
+                <Button text="Custom Rotation (Ctrl+T)" onAction="#onCustomRotationCommand" styleClass="btn">
                     <graphic>
                         <SVGPath content="M12 2a10 10 0 1 1-7 17.07l1.42-1.42A8 8 0 1 0 4 12h3l-4 4-4-4h3a10 10 0 0 1 10-10zm-1 5h2v5h4v2h-6V7z" styleClass="icon"/>
                     </graphic>
                 </Button>
-
-                <Button text="Zoom in" onAction="#onZoomInCommand" styleClass="btn">
+                <Button text="Reset (Ctrl+0)" onAction="#onResetRotationCommand" styleClass="btn">
+                    <graphic>
+                        <SVGPath content="M6 4h12v4H6V4zm0 6h12v10H6V10zm2 2v6h8v-6H8z" styleClass="icon"/>
+                    </graphic>
+                </Button>
+                <Button text="Zoom in (Crtl++)" onAction="#onZoomInCommand" styleClass="btn">
                     <graphic>
                         <SVGPath content="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm-1 3h2v2h2v2h-2v2H9v-2H7V9h2V7zm6.32 9.9l4.28 4.28-1.42 1.42-4.28-4.28 1.42-1.42z" styleClass="icon"/>
                     </graphic>
                 </Button>
-                <Button text="Zoom out" onAction="#onZoomOutCommand" styleClass="btn">
+                <Button text="Zoom out (Ctrl+-)" onAction="#onZoomOutCommand" styleClass="btn">
                     <graphic>
                         <SVGPath content="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM7 9h6v2H7V9zm8.32 7.9l4.28 4.28-1.42 1.42-4.28-4.28 1.42-1.42z" styleClass="icon"/>
                     </graphic>
                 </Button>
-                <Button text="Reset zoom" onAction="#onResetZoomCommand" styleClass="btn">
+                <Button text="Reset zoom (Ctrl+1)" onAction="#onResetZoomCommand" styleClass="btn">
                     <graphic>
                         <SVGPath content="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" styleClass="icon"/>
                     </graphic>
