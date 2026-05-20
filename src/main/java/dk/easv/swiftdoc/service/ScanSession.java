@@ -2,6 +2,7 @@ package dk.easv.swiftdoc.service;
 
 import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.Document;
+import dk.easv.swiftdoc.model.User;
 
 /**
  * Live state of an in-progress scanning session.
@@ -21,18 +22,24 @@ public class ScanSession {
 
     private final Box box;
     private final Document firstDocument;
+    private final User user;
     private Document currentDocument;
     private int totalFileCount;
 
-    public ScanSession(Box box, Document firstDocument) {
+    public ScanSession(Box box, Document firstDocument, User user) {
         this.box = box;
         this.firstDocument = firstDocument;
+        this.user = user;
         this.currentDocument = firstDocument;
         this.totalFileCount = 0;
     }
 
     public Box getBox() {
         return box;
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public Document getFirstDocument() {

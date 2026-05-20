@@ -113,7 +113,9 @@ public class ScanService {
             File barcodeFile = fileDAO.create(
                     newDoc.getDocumentId(),
                     session.getBox().getBoxId(),
-                    tiff.data()
+                    tiff.data(),
+                    session.getUser().getUserId(),
+                    session.getUser().getUsername()
             );
             session.incrementFileCount();
 
@@ -130,7 +132,9 @@ public class ScanService {
         File saved = fileDAO.create(
                 session.getCurrentDocument().getDocumentId(),
                 session.getBox().getBoxId(),
-                tiff.data()
+                tiff.data(),
+                session.getUser().getUserId(),
+                session.getUser().getUsername()
         );
         session.incrementFileCount();
         return new ScanResult(Kind.PAGE, tiff.data(), saved, null, null);

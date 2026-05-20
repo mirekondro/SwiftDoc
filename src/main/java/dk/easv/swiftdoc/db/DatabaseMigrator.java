@@ -23,6 +23,7 @@ public final class DatabaseMigrator {
             ensureUsersTable(connection);
             ensureUsersIsActive(connection);
             ensureUserProfileAccess(connection);
+            ensureFileLogsTable(connection);
             migrated = true;
         }
     }
@@ -94,6 +95,24 @@ public final class DatabaseMigrator {
                             + "      REFERENCES dbo.Users(UserId) ON DELETE CASCADE, "
                             + "    CONSTRAINT FK_UPA_Profiles FOREIGN KEY (ProfileId) "
                             + "      REFERENCES dbo.Profiles(ProfileId) ON DELETE CASCADE "
+                            + "  ); "
+                            + "END;");
+        }
+    }
+
+    private static void ensureFileLogsTable(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(
+                    "IF OBJECT_ID('dbo.FileLogs', 'U') IS NULL "
+                            + "BEGIN "
+                            + "  CREATE TABLE dbo.FileLogs ("
+                            + "    LogId      INT IDENTITY(1,1) PRIMARY KEY, "
+                            + "    UserId     INT NOT NULL, "
+                            + "    Username   NVARCHAR(64) NOT NULL, "
+                            + "    [Action]   NVARCHAR(20) NOT NULL, "
+                            + "    FileId     INT NOT NULL, "
+                            + "    DocumentId INT NOT NULL, "
+                            + "    CreatedAt  DATETIME2 NOT NULL DEFAULT SYSDATETIME() "
                             + "  ); "
                             + "END;");
         }

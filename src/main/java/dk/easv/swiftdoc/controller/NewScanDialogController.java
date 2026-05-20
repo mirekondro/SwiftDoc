@@ -203,7 +203,7 @@ public class NewScanDialogController {
         createdSession = null;
 
         try {
-            createdSession = sessionService.startSession(profile, boxName);
+            createdSession = sessionService.startSession(profile, boxName, currentUser);
         } catch (IllegalArgumentException ex) {
             event.consume();
             showError("Invalid input", ex.getMessage());
