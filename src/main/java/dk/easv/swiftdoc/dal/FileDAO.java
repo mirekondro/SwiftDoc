@@ -2,6 +2,7 @@ package dk.easv.swiftdoc.dal;
 
 import dk.easv.swiftdoc.db.DBConnection;
 import dk.easv.swiftdoc.model.File;
+import dk.easv.swiftdoc.model.LogEntry;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -22,6 +23,16 @@ import java.util.List;
  * file to view it).
  */
 public class FileDAO {
+
+    private final LogDAO logDAO;
+
+    public FileDAO() {
+        this(new LogDAO());
+    }
+
+    public FileDAO(LogDAO logDAO) {
+        this.logDAO = logDAO;
+    }
 
     private static final String INSERT_SQL =
             "INSERT INTO dbo.Files " +
@@ -44,7 +55,8 @@ public class FileDAO {
     private static final String SELECT_TIFF_DATA =
             "SELECT TiffData FROM dbo.Files WHERE FileId = ?";
 
-    public File create(int documentId, int boxId, byte[] tiffBytes) throws SQLException {
+    public File create(int documentId, int boxId, byte[] tiffBytes,
+                       int userId, String username) throws SQLException {
         if (tiffBytes == null || tiffBytes.length == 0) {
             throw new IllegalArgumentException("tiffBytes must not be null or empty");
         }
@@ -78,9 +90,25 @@ public class FileDAO {
                 }
             }
 
+            logDAO.log(userId, username, LogEntry.Action.FILE_CREATED, newId, documentId);
             return new File(newId, documentId, referenceId, incrementalId,
                     rotationAngle, tiffBytes);
         }
+    }
+
+    private static final String DELETE_SQL =
+            "DELETE FROM dbo.Files WHERE FileId = ?";
+
+    public void delete(int fileId, int documentId, int userId, String username) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(DELETE_SQL)) {
+            stmt.setInt(1, fileId);
+            int rows = stmt.executeUpdate();
+            if (rows != 1) {
+                throw new SQLException("Expected 1 row deleted, got " + rows);
+            }
+        }
+        logDAO.log(userId, username, LogEntry.Action.FILE_DELETED, fileId, documentId);
     }
 
     private static final String UPDATE_ROTATION_SQL =

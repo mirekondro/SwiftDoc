@@ -29,6 +29,7 @@ public class AdminController {
     @FXML private Label profileDetailsLabel;
     @FXML private ListView<Client> clientsList;
     @FXML private UserManagementController userManagementController;
+    @FXML private LogsController logsController;
 
     private User currentUser;
 

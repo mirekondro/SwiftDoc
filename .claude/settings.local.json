@@ -3,7 +3,14 @@
     "allow": [
       "mcp__codegraph__codegraph_explore",
       "Bash(grep -E \"\\\\.\\(java|xml\\)$\")",
-      "Bash(mvn compile *)"
+      "Bash(mvn compile *)",
+      "Bash(brew upgrade *)",
+      "mcp__codegraph__codegraph_files",
+      "Bash(xargs ls -la)",
+      "Bash(xargs basename -a)",
+      "Bash(mvn javafx:run)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -v \"WARNING\\\\|Picked up\\\\|^$\")"
     ]
   }
 }

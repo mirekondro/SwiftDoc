@@ -118,6 +118,7 @@
 
             <!-- Rotate toolbar -->
             <HBox spacing="8.0" styleClass="toolbar">
+                <Button text="Delete File" onAction="#onDeleteFileCommand" styleClass="btn btn-logout"/>
                 <Button text="Custom Rotation (Ctrl+T)" onAction="#onCustomRotationCommand" styleClass="btn">
                     <graphic>
                         <SVGPath content="M12 2a10 10 0 1 1-7 17.07l1.42-1.42A8 8 0 1 0 4 12h3l-4 4-4-4h3a10 10 0 0 1 10-10zm-1 5h2v5h4v2h-6V7z" styleClass="icon"/>

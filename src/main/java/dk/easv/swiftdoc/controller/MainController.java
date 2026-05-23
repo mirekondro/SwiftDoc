@@ -1,5 +1,6 @@
 package dk.easv.swiftdoc.controller;
 
+import dk.easv.swiftdoc.dal.FileDAO;
 import dk.easv.swiftdoc.dal.TiffImageLoader;
 import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.Document;
@@ -53,6 +54,7 @@ public class MainController {
     private final ScanService scanService = new ScanService();
     private final SidebarService sidebarService = new SidebarService();
     private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
+    private final FileDAO fileDAO = new FileDAO();
 
     private User currentUser;
     private Runnable onLogout;
@@ -190,6 +192,51 @@ public class MainController {
     @FXML
     private void onResetRotationCommand() {
         resetViewerRotation();
+    }
+
+    @FXML
+    private void onDeleteFileCommand() {
+        if (currentlyDisplayedFile == null) return;
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete File");
+        confirm.setHeaderText("Delete File #" + currentlyDisplayedFile.getReferenceId() + "?");
+        confirm.setContentText("This action cannot be undone.");
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+
+        File toDelete = currentlyDisplayedFile;
+        try {
+            fileDAO.delete(toDelete.getFileId(), toDelete.getDocumentId(),
+                    currentUser.getUserId(), currentUser.getUsername());
+            removeFileFromTree(toDelete);
+            currentlyDisplayedFile = null;
+            pageImageView.setImage(null);
+            viewerCaptionLabel.setText("No page to display yet");
+        } catch (SQLException ex) {
+            Alert error = new Alert(Alert.AlertType.ERROR);
+            error.setTitle("Error");
+            error.setHeaderText("Could not delete file");
+            error.setContentText(ex.getMessage());
+            error.showAndWait();
+        }
+    }
+
+    private void removeFileFromTree(File file) {
+        TreeItem<SidebarNode> root = sidebarTree.getRoot();
+        if (root == null) return;
+        for (TreeItem<SidebarNode> boxItem : root.getChildren()) {
+            for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
+                docItem.getChildren().removeIf(fileItem ->
+                        fileItem.getValue().file() != null &&
+                        fileItem.getValue().file().getFileId() == file.getFileId());
+            }
+        }
+        for (BoxBranch branch : allBranches) {
+            for (DocumentBranch docBranch : branch.documents()) {
+                docBranch.files().removeIf(f -> f.getFileId() == file.getFileId());
+            }
+        }
     }
 
     @FXML

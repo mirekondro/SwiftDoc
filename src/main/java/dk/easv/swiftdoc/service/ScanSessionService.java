@@ -6,6 +6,7 @@ import dk.easv.swiftdoc.dal.ProfileDAO;
 import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.Document;
 import dk.easv.swiftdoc.model.ScanningProfile;
+import dk.easv.swiftdoc.model.User;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -46,7 +47,7 @@ public class ScanSessionService {
     /**
      * Start a new scanning session by creating a Box and its first Document.
      */
-    public ScanSession startSession(ScanningProfile profile, String boxName) throws SQLException {
+    public ScanSession startSession(ScanningProfile profile, String boxName, User user) throws SQLException {
         if (profile == null) {
             throw new IllegalArgumentException("A scanning profile must be selected.");
         }
@@ -56,6 +57,6 @@ public class ScanSessionService {
 
         Box box = boxDAO.create(boxName.trim(), profile.getProfileId());
         Document firstDocument = documentDAO.create(box.getBoxId(), null);
-        return new ScanSession(box, firstDocument);
+        return new ScanSession(box, firstDocument, user);
     }
 }

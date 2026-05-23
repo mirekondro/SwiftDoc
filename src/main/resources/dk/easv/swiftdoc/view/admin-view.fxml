@@ -77,5 +77,10 @@
             <fx:include fx:id="userManagement" source="user-management.fxml"/>
         </Tab>
 
+        <!-- =================== LOGS =================== -->
+        <Tab text="Logs">
+            <fx:include fx:id="logs" source="logs-view.fxml"/>
+        </Tab>
+
     </TabPane>
 </VBox>
