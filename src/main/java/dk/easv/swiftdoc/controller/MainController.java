@@ -82,6 +82,7 @@ public class MainController {
 
     @FXML private VBox root;
     @FXML private Button scanButton;
+    @FXML private Button finishSessionButton;
     @FXML private Label sessionInfoLabel;
     @FXML private Label counterLabel;
     @FXML private Label lastResultLabel;
@@ -334,7 +335,7 @@ public class MainController {
 
     private void applySidebarTree(List<BoxBranch> branches) {
         this.allBranches = new ArrayList<>(branches);
-        renderTree(branches);
+        renderForCurrentMode();
     }
     private void renderTree(List<BoxBranch> branches) {
         TreeItem<SidebarNode> root = sidebarTree.getRoot();
@@ -342,6 +343,26 @@ public class MainController {
         for (BoxBranch branch : branches) {
             root.getChildren().add(buildBoxItem(branch));
         }
+    }
+
+    private List<BoxBranch> branchesForCurrentMode() {
+        if (activeSession == null) {
+            return allBranches;
+        }
+        int activeBoxId = activeSession.getBox().getBoxId();
+        List<BoxBranch> onlyActive = new ArrayList<>(1);
+        for (BoxBranch branch : allBranches) {
+            if (branch.box().getBoxId() == activeBoxId) {
+                onlyActive.add(branch);
+                break;
+            }
+        }
+        return onlyActive;
+    }
+
+
+    private void renderForCurrentMode() {
+        renderTree(branchesForCurrentMode());
     }
     @FXML
     private void onClearSidebarSearch() {
@@ -351,14 +372,14 @@ public class MainController {
 
     private void filterTree(String query) {
         if (query == null || query.isBlank()) {
-            renderTree(allBranches);
+            renderForCurrentMode();
             return;
         }
 
         String needle = query.trim().toLowerCase(java.util.Locale.ROOT);
         List<BoxBranch> filtered = new ArrayList<>();
 
-        for (BoxBranch branch : allBranches) {
+        for (BoxBranch branch : branchesForCurrentMode()) {
             BoxBranch trimmed = filterBranch(branch, needle);
             if (trimmed != null) {
                 filtered.add(trimmed);
@@ -1031,28 +1052,63 @@ public class MainController {
 
     private void onSessionStarted() {
         scanButton.setDisable(false);
+        if (finishSessionButton != null) {
+            finishSessionButton.setVisible(true);
+            finishSessionButton.setManaged(true);
+        }
         refreshSessionLabels();
         lastResultLabel.setText("Ready. Press Scan to fetch the next page.");
         viewerCaptionLabel.setText("No page to display yet");
         pageImageView.setImage(null);
         resetZoom();
 
-        // Add the new Box + first Document into the sidebar tree.
-        TreeItem<SidebarNode> boxItem = new TreeItem<>(
-                SidebarNode.forBox(activeSession.getBox()));
-        TreeItem<SidebarNode> firstDocItem = new TreeItem<>(
-                SidebarNode.forDocument(activeSession.getFirstDocument()));
-        firstDocItem.setExpanded(true);
-        boxItem.getChildren().add(firstDocItem);
-        boxItem.setExpanded(true);
-        sidebarTree.getRoot().getChildren().add(boxItem);
-        allBranches.add(new BoxBranch(activeSession.getBox(), new ArrayList<>(List.of(new DocumentBranch(
-                activeSession.getFirstDocument(), new ArrayList<>())))));
+        // Add the new box to the in-memory model so it's available when we
+        // later return to history view.
+        allBranches.add(new BoxBranch(
+                activeSession.getBox(),
+                new ArrayList<>(List.of(new DocumentBranch(
+                        activeSession.getFirstDocument(), new ArrayList<>())))));
+
+        // Switch the sidebar to session-view: only the active box shows.
+        renderForCurrentMode();
 
         System.out.println("Session started — Box id "
                 + activeSession.getBox().getBoxId()
                 + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
     }
+
+    @FXML
+    private void onFinishSessionCommand() {
+        if (activeSession == null) {
+            return;
+        }
+
+        int finishedBoxId = activeSession.getBox().getBoxId();
+        activeSession = null;
+
+        // Update controls back to idle state.
+        scanButton.setDisable(true);
+        if (finishSessionButton != null) {
+            finishSessionButton.setVisible(false);
+            finishSessionButton.setManaged(false);
+        }
+        sessionInfoLabel.setText("No active session");
+        lastResultLabel.setText("Session finished. Box #" + finishedBoxId
+                + " moved to history.");
+        viewerCaptionLabel.setText("No page to display yet");
+        pageImageView.setImage(null);
+        resetZoom();
+        currentlyDisplayedFile = null;
+
+        // Clear any search filter so the full history is visible, then reload
+        // from the DB (picks up final state of the finished box) and render
+        // history view.
+        if (sidebarSearchField != null) {
+            sidebarSearchField.clear();
+        }
+        loadSidebarTreeAsync();
+    }
+
 
     @FXML private TextField sidebarSearchField;
     private List<BoxBranch> allBranches = new ArrayList<>();
