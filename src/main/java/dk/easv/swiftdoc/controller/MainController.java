@@ -1,9 +1,11 @@
 package dk.easv.swiftdoc.controller;
 
+import dk.easv.swiftdoc.dal.FileDAO;
 import dk.easv.swiftdoc.dal.TiffImageLoader;
 import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.Document;
 import dk.easv.swiftdoc.model.File;
+import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ScanService;
 import dk.easv.swiftdoc.service.ScanService.ScanResult;
 import dk.easv.swiftdoc.service.ScanSession;
@@ -16,10 +18,15 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -34,27 +41,50 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
+import javafx.scene.control.TextField;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 public class MainController {
 
     private final ScanService scanService = new ScanService();
     private final SidebarService sidebarService = new SidebarService();
     private final TiffImageLoader tiffImageLoader = new TiffImageLoader();
+    private final FileDAO fileDAO = new FileDAO();
 
+    private User currentUser;
+    private Runnable onLogout;
     private ScanSession activeSession;
-    private double viewerRotationDegrees = 0.0;
+
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+    }
+
+    public void setOnLogout(Runnable callback) {
+        this.onLogout = callback;
+    }
+
+    @FXML
+    private void onLogoutCommand() {
+        if (onLogout != null) {
+            onLogout.run();
+        }
+    }
+    private File currentlyDisplayedFile;
     private TreeItem<SidebarNode> draggedTreeItem;
+
+    private static final double ZOOM_STEP = 1.25;
+    private static final double ZOOM_MIN = 0.25;
+    private static final double ZOOM_MAX = 8.0;
+    private double zoomFactor = 1.0;
 
     @FXML private VBox root;
     @FXML private Button scanButton;
+    @FXML private Button finishSessionButton;
     @FXML private Label sessionInfoLabel;
     @FXML private Label counterLabel;
     @FXML private Label lastResultLabel;
@@ -84,10 +114,7 @@ public class MainController {
         public String toString() {
             return switch (kind) {
                 case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId();
-                case DOCUMENT -> "\uD83D\uDCC4 Document #" + document.getDocumentNumber()
-                        + (document.getBarcodeValue() != null
-                        ? " [" + document.getBarcodeValue() + "]"
-                        : "");
+                case DOCUMENT -> "\uD83D\uDCC4 " + document.toString();
                 case FILE -> "\uD83D\uDCC3 File #" + file.getReferenceId();
             };
         }
@@ -101,49 +128,211 @@ public class MainController {
         sidebarTree.setRoot(new TreeItem<>(null));
         loadSidebarTreeAsync();
         configureSidebarDragAndDrop();
+        sidebarSearchField.textProperty().addListener((obs, oldVal, newVal) -> filterTree(newVal));
 
         sidebarTree.getSelectionModel().selectedItemProperty()
                 .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
     }
 
     @FXML
+    private void onCustomRotationCommand() {
+        if (currentlyDisplayedFile == null) {
+            viewerCaptionLabel.setText("Open a file first, then rotate it.");
+            return;
+        }
+
+        File file = currentlyDisplayedFile;
+        int originalAngle = file.getRotationAngle();
+
+        try {
+            FXMLLoader loader = new FXMLLoader(MainController.class.getResource(
+                    "/dk/easv/swiftdoc/view/custom-rotation-dialog.fxml"));
+            DialogPane pane = loader.load();
+            applyDialogTheme(pane);
+            CustomRotationDialogController dialogController = loader.getController();
+
+            // Live preview: while the dialog is open, rotate the viewer in
+            // real-time as the user drags or types. Don't touch the model
+            // or the DB until Apply.
+            dialogController.configure(originalAngle, angle -> {
+                pageImageView.setRotate(angle);
+                viewerCaptionLabel.setText("Rotation: " + angle + "° (preview)");
+            });
+
+            Dialog<?> dialog = new Dialog<>();
+            dialog.setDialogPane(pane);
+            dialog.setTitle("Custom Rotation");
+            dialog.showAndWait();
+
+            Integer applied = dialogController.getFinalAngle();
+            if (applied == null) {
+                // Cancelled — roll viewer back to whatever rotation we had
+                // before opening the dialog.
+                pageImageView.setRotate(originalAngle);
+                viewerCaptionLabel.setText("Rotation: " + originalAngle + "°");
+                return;
+            }
+
+            // Persist via the same code path as the 90° buttons (optimistic
+            // model+viewer update, DB write on a background thread, rollback
+            // on failure).
+            applyRotationToFile(file, applied);
+
+        } catch (IOException ex) {
+            System.err.println("Failed to load custom rotation dialog: " + ex.getMessage());
+            ex.printStackTrace();
+            // Restore viewer to original in case preview already changed it.
+            pageImageView.setRotate(originalAngle);
+        }
+    }
+
+
+
+
+    @FXML
+    private void onResetRotationCommand() {
+        resetViewerRotation();
+    }
+
+    @FXML
+    private void onDeleteFileCommand() {
+        if (currentlyDisplayedFile == null) return;
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete File");
+        confirm.setHeaderText("Delete File #" + currentlyDisplayedFile.getReferenceId() + "?");
+        confirm.setContentText("This action cannot be undone.");
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+
+        File toDelete = currentlyDisplayedFile;
+        try {
+            fileDAO.delete(toDelete.getFileId(), toDelete.getDocumentId(),
+                    currentUser.getUserId(), currentUser.getUsername());
+            removeFileFromTree(toDelete);
+            currentlyDisplayedFile = null;
+            pageImageView.setImage(null);
+            viewerCaptionLabel.setText("No page to display yet");
+        } catch (SQLException ex) {
+            Alert error = new Alert(Alert.AlertType.ERROR);
+            error.setTitle("Error");
+            error.setHeaderText("Could not delete file");
+            error.setContentText(ex.getMessage());
+            error.showAndWait();
+        }
+    }
+
+    private void removeFileFromTree(File file) {
+        TreeItem<SidebarNode> root = sidebarTree.getRoot();
+        if (root == null) return;
+        for (TreeItem<SidebarNode> boxItem : root.getChildren()) {
+            for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
+                docItem.getChildren().removeIf(fileItem ->
+                        fileItem.getValue().file() != null &&
+                        fileItem.getValue().file().getFileId() == file.getFileId());
+            }
+        }
+        for (BoxBranch branch : allBranches) {
+            for (DocumentBranch docBranch : branch.documents()) {
+                docBranch.files().removeIf(f -> f.getFileId() == file.getFileId());
+            }
+        }
+    }
+
+    @FXML
+    private void onZoomInCommand() {
+        applyZoom(zoomFactor * ZOOM_STEP);
+    }
+
+    @FXML
+    private void onZoomOutCommand() {
+        applyZoom(zoomFactor / ZOOM_STEP);
+    }
+
+    @FXML
+    private void onResetZoomCommand() {
+        applyZoom(1.0);
+    }
+
+    private void applyZoom(double newZoom) {
+        double clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+        zoomFactor = clamped;
+        pageImageView.setScaleX(clamped);
+        pageImageView.setScaleY(clamped);
+    }
+
+    private void resetZoom() {
+        zoomFactor = 1.0;
+        pageImageView.setScaleX(1.0);
+        pageImageView.setScaleY(1.0);
+    }
+
+    @FXML
     private void onKeyPressed(KeyEvent event) {
-        if (event.getCode() == KeyCode.F1) {
+        KeyCode code = event.getCode();
+
+        if (code == KeyCode.F1) {
             onNewCommand();
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.F2) {
+        if (code == KeyCode.F2) {
             onScanCommand();
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.F3) {
-            rotateViewer(-90);
+        if (code == KeyCode.PAGE_UP) {
+            selectAdjacentFile(-1);
             event.consume();
             return;
         }
-        if (event.getCode() == KeyCode.F4) {
-            rotateViewer(90);
+        if (code == KeyCode.PAGE_DOWN) {
+            selectAdjacentFile(1);
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.R) {
-            rotateViewer(90);
+        if (event.isControlDown() && code == KeyCode.T) {
+            onCustomRotationCommand();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.L) {
-            rotateViewer(-90);
-            event.consume();
-            return;
-        }
-        if (event.isControlDown() && event.getCode() == KeyCode.DIGIT0) {
+        // Reset rotation: Ctrl+0 — accept both main-row and numpad
+        if (event.isControlDown()
+                && (code == KeyCode.DIGIT0 || code == KeyCode.NUMPAD0)) {
             resetViewerRotation();
             event.consume();
             return;
         }
-        if (event.isControlDown() && event.getCode() == KeyCode.S) {
+        // Zoom in: Ctrl++ / Ctrl+= — main row produces EQUALS or PLUS,
+        // numpad produces ADD
+        if (event.isControlDown()
+                && (code == KeyCode.EQUALS || code == KeyCode.PLUS
+                || code == KeyCode.ADD)) {
+            onZoomInCommand();
+            event.consume();
+            return;
+        }
+        // Zoom out: Ctrl+- — main row produces MINUS, numpad produces SUBTRACT
+        if (event.isControlDown()
+                && (code == KeyCode.MINUS || code == KeyCode.SUBTRACT)) {
+            onZoomOutCommand();
+            event.consume();
+            return;
+        }
+        // Reset zoom: Ctrl+1 — accept both main-row and numpad
+        if (event.isControlDown()
+                && (code == KeyCode.DIGIT1 || code == KeyCode.NUMPAD1)) {
+            onResetZoomCommand();
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && code == KeyCode.F) {
+            sidebarSearchField.requestFocus();
+            sidebarSearchField.selectAll();
+            event.consume();
+            return;
+        }
+        if (event.isControlDown() && code == KeyCode.S) {
             onSaveCommand();
             event.consume();
         }
@@ -192,12 +381,134 @@ public class MainController {
     }
 
     private void applySidebarTree(List<BoxBranch> branches) {
+        this.allBranches = new ArrayList<>(branches);
+        renderForCurrentMode();
+    }
+    private void renderTree(List<BoxBranch> branches) {
         TreeItem<SidebarNode> root = sidebarTree.getRoot();
         root.getChildren().clear();
-
         for (BoxBranch branch : branches) {
             root.getChildren().add(buildBoxItem(branch));
         }
+    }
+
+    private List<BoxBranch> branchesForCurrentMode() {
+        if (activeSession == null) {
+            return allBranches;
+        }
+        int activeBoxId = activeSession.getBox().getBoxId();
+        List<BoxBranch> onlyActive = new ArrayList<>(1);
+        for (BoxBranch branch : allBranches) {
+            if (branch.box().getBoxId() == activeBoxId) {
+                onlyActive.add(branch);
+                break;
+            }
+        }
+        return onlyActive;
+    }
+
+
+    private void renderForCurrentMode() {
+        renderTree(branchesForCurrentMode());
+    }
+    @FXML
+    private void onClearSidebarSearch() {
+        sidebarSearchField.clear();   // triggers the listener → resets the tree
+    }
+
+
+    private void filterTree(String query) {
+        if (query == null || query.isBlank()) {
+            renderForCurrentMode();
+            return;
+        }
+
+        String needle = query.trim().toLowerCase(java.util.Locale.ROOT);
+        List<BoxBranch> filtered = new ArrayList<>();
+
+        for (BoxBranch branch : branchesForCurrentMode()) {
+            BoxBranch trimmed = filterBranch(branch, needle);
+            if (trimmed != null) {
+                filtered.add(trimmed);
+            }
+        }
+
+        renderTree(filtered);
+    }
+
+    /**
+     * Returns a copy of the branch containing only matching subtrees, or
+     * null if nothing in this branch matches the needle.
+     */
+    private BoxBranch filterBranch(BoxBranch branch, String needle) {
+        boolean boxMatches = boxMatches(branch.box(), needle);
+
+        // If the box itself matches, keep all its documents/files unfiltered.
+        if (boxMatches) {
+            return branch;
+        }
+
+        // Otherwise filter documents — keep only those whose doc/files match.
+        List<DocumentBranch> matchingDocs = new ArrayList<>();
+        for (DocumentBranch docBranch : branch.documents()) {
+            DocumentBranch trimmed = filterDocumentBranch(docBranch, needle);
+            if (trimmed != null) {
+                matchingDocs.add(trimmed);
+            }
+        }
+
+        if (matchingDocs.isEmpty()) {
+            return null;
+        }
+        return new BoxBranch(branch.box(), matchingDocs);
+    }
+
+    private DocumentBranch filterDocumentBranch(DocumentBranch docBranch, String needle) {
+        boolean docMatches = documentMatches(docBranch.document(), needle);
+
+        // Document itself matches → show all its files.
+        if (docMatches) {
+            return docBranch;
+        }
+
+        // Otherwise keep only matching files.
+        List<File> matchingFiles = new ArrayList<>();
+        for (File file : docBranch.files()) {
+            if (fileMatches(file, needle)) {
+                matchingFiles.add(file);
+            }
+        }
+        if (matchingFiles.isEmpty()) {
+            return null;
+        }
+        return new DocumentBranch(docBranch.document(), matchingFiles);
+    }
+
+    private boolean boxMatches(Box box, String needle) {
+        if (box == null) return false;
+        if (box.getBoxName() != null
+                && box.getBoxName().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        return ("box #" + box.getBoxId()).contains(needle);
+    }
+
+    private boolean documentMatches(Document doc, String needle) {
+        if (doc == null) return false;
+        if (doc.getBarcodeValue() != null
+                && doc.getBarcodeValue().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        if (doc.getStatus() != null
+                && doc.getStatus().label().toLowerCase(java.util.Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        return ("document #" + doc.getDocumentNumber()).contains(needle);
+    }
+
+    private boolean fileMatches(File file, String needle) {
+        if (file == null) return false;
+        return ("file #" + file.getReferenceId()).contains(needle);
     }
 
     private void configureSidebarDragAndDrop() {
@@ -213,15 +524,17 @@ public class MainController {
                     if (empty || item == null) {
                         setText(null);
                         setGraphic(null);
+                        setContextMenu(null);
                         return;
                     }
                     container.getStyleClass().setAll("sidebar-cell");
                     textLabel.getStyleClass().setAll("sidebar-cell-text");
                     textLabel.setText(item.toString());
-                    RenderStatus status = getRenderStatus(item, getTreeItem());
+                    Document.Status status = resolveBadgeStatus(item);
                     applyBadge(badgeLabel, status);
                     setText(null);
                     setGraphic(container);
+                    setContextMenu(buildContextMenu(item));
                 }
             };
 
@@ -267,95 +580,230 @@ public class MainController {
         });
     }
 
-    private enum RenderStatus {
-        RENDERED("Rendered", "status-rendered"),
-        NOT_RENDERED("Not rendered", "status-pending");
-
-        private final String label;
-        private final String styleClass;
-
-        RenderStatus(String label, String styleClass) {
-            this.label = label;
-            this.styleClass = styleClass;
+    private ContextMenu buildContextMenu(SidebarNode node) {
+        if (node == null || node.kind() != SidebarNode.Kind.DOCUMENT) {
+            return null;
         }
+        Document doc = node.document();
+        if (doc == null) {
+            return null;
+        }
+        ContextMenu menu = new ContextMenu();
+        Menu statusMenu = new Menu("Status");
+        ToggleGroup group = new ToggleGroup();
+        for (Document.Status status : Document.Status.values()) {
+            RadioMenuItem item = new RadioMenuItem(status.label());
+            item.setToggleGroup(group);
+            item.setSelected(status == doc.getStatus());
+            item.setOnAction(event -> updateDocumentStatus(doc, status));
+            statusMenu.getItems().add(item);
+        }
+        menu.getItems().add(statusMenu);
+        return menu;
     }
 
-    private RenderStatus getRenderStatus(SidebarNode node, TreeItem<SidebarNode> treeItem) {
+    private void updateDocumentStatus(Document doc, Document.Status status) {
+        if (doc == null || status == null || status == doc.getStatus()) {
+            return;
+        }
+        Document.Status previous = doc.getStatus();
+        doc.setStatus(status);
+        sidebarTree.refresh();
+
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.updateDocumentStatus(doc.getDocumentId(), status);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    doc.setStatus(previous);
+                    sidebarTree.refresh();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Status update failed");
+                    alert.setHeaderText("Could not update document status");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-update-status");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private Document.Status resolveBadgeStatus(SidebarNode node) {
         if (node == null || node.kind() == null) {
-            return RenderStatus.NOT_RENDERED;
+            return null;
         }
         return switch (node.kind()) {
-            case FILE -> renderedDocumentIds.contains(node.file().getDocumentId())
-                    ? RenderStatus.RENDERED
-                    : RenderStatus.NOT_RENDERED;
-            case DOCUMENT -> renderedDocumentIds.contains(node.document().getDocumentId())
-                    ? RenderStatus.RENDERED
-                    : RenderStatus.NOT_RENDERED;
-            case BOX -> isBoxRendered(treeItem) ? RenderStatus.RENDERED : RenderStatus.NOT_RENDERED;
+            case FILE -> findDocumentForFile(node.file());
+            case DOCUMENT -> node.document().getStatus();
+            case BOX -> resolveBoxStatus(node.box());
         };
     }
 
-    private boolean isBoxRendered(TreeItem<SidebarNode> boxItem) {
-        if (boxItem == null || boxItem.getChildren().isEmpty()) {
-            return false;
-        }
-        for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
-            SidebarNode value = docItem.getValue();
-            if (value == null || value.kind() != SidebarNode.Kind.DOCUMENT) {
+    /**
+     * Box-level status:
+     *   - If the box has NO documents at all → no badge
+     *   - If every Document is EXPORTED → EXPORTED
+     *   - Otherwise → no badge
+     *
+     * The export flow always processes a whole box, so "partly exported" isn't
+     * a normal state. Showing just the final state keeps the sidebar clean.
+     */
+    private Document.Status resolveBoxStatus(dk.easv.swiftdoc.model.Box box) {
+        if (box == null) return null;
+
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() != box.getBoxId()) {
                 continue;
             }
-            if (!renderedDocumentIds.contains(value.document().getDocumentId())) {
-                return false;
+            List<DocumentBranch> docs = boxBranch.documents();
+            if (docs.isEmpty()) {
+                return null; // empty box, no badge
+            }
+            for (DocumentBranch docBranch : docs) {
+                if (docBranch.document().getStatus() != Document.Status.EXPORTED) {
+                    return null; // at least one doc is not exported → no box badge
+                }
+            }
+            return Document.Status.EXPORTED;
+        }
+        return null;
+    }
+
+    /**
+     * Look up the Document that owns a given File and return its status.
+     * Returns NEW as a fallback if the document can't be found (defensive —
+     * shouldn't happen in practice).
+     */
+    private Document.Status findDocumentForFile(File file) {
+        if (file == null) return Document.Status.NEW;
+        for (BoxBranch boxBranch : allBranches) {
+            for (DocumentBranch docBranch : boxBranch.documents()) {
+                if (docBranch.document().getDocumentId() == file.getDocumentId()) {
+                    return docBranch.document().getStatus();
+                }
             }
         }
+        return Document.Status.NEW;
+    }
+
+    /**
+     * Apply a status badge to the label. If status is null (e.g. for Box
+     * nodes), the badge is hidden so it doesn't take up space.
+     */
+    private void applyBadge(Label badgeLabel, Document.Status status) {
+        if (badgeLabel == null) {
+            return;
+        }
+        if (status == null) {
+            badgeLabel.setText("");
+            badgeLabel.setVisible(false);
+            badgeLabel.setManaged(false);
+            badgeLabel.getStyleClass().setAll("status-badge");
+            return;
+        }
+        badgeLabel.setVisible(true);
+        badgeLabel.setManaged(true);
+        badgeLabel.setText(status.label());
+        badgeLabel.getStyleClass().setAll("status-badge", status.cssClass());
+    }
+
+    private boolean moveDraggedFile(TreeItem<SidebarNode> target) {
+        TreeItem<SidebarNode> sourceDocItem = draggedTreeItem.getParent();
+        if (!isDocumentItem(sourceDocItem)) {
+            return false;
+        }
+        TreeItem<SidebarNode> targetDocItem = resolveTargetDocument(target);
+        if (!isDocumentItem(targetDocItem)) {
+            return false;
+        }
+
+        if (sourceDocItem == targetDocItem) {
+            List<TreeItem<SidebarNode>> siblings = sourceDocItem.getChildren();
+            int draggedIndex = siblings.indexOf(draggedTreeItem);
+            int dropIndex = isFileItem(target) ? siblings.indexOf(target) : siblings.size();
+
+            if (draggedIndex < 0 || dropIndex < 0) {
+                return false;
+            }
+            if (draggedIndex < dropIndex) {
+                dropIndex--;
+            }
+            if (draggedIndex == dropIndex) {
+                return true;
+            }
+
+            siblings.remove(draggedTreeItem);
+            siblings.add(dropIndex, draggedTreeItem);
+            persistDocumentOrderAsync(sourceDocItem);
+            return true;
+        }
+
+        List<TreeItem<SidebarNode>> sourceSiblings = sourceDocItem.getChildren();
+        List<TreeItem<SidebarNode>> targetSiblings = targetDocItem.getChildren();
+        int draggedIndex = sourceSiblings.indexOf(draggedTreeItem);
+        int dropIndex = isFileItem(target) ? targetSiblings.indexOf(target) : targetSiblings.size();
+
+        if (draggedIndex < 0) {
+            return false;
+        }
+        if (dropIndex < 0) {
+            dropIndex = targetSiblings.size();
+        }
+
+        sourceSiblings.remove(draggedTreeItem);
+        targetSiblings.add(dropIndex, draggedTreeItem);
+
+        File movedFile = draggedTreeItem.getValue().file();
+        movedFile.setDocumentId(targetDocItem.getValue().document().getDocumentId());
+        persistCrossDocumentMoveAsync(sourceDocItem, targetDocItem, movedFile);
         return true;
     }
 
-    private void applyBadge(Label badgeLabel, RenderStatus status) {
-        if (badgeLabel == null || status == null) {
-            return;
+    private TreeItem<SidebarNode> resolveTargetDocument(TreeItem<SidebarNode> target) {
+        if (isDocumentItem(target)) {
+            return target;
         }
-        badgeLabel.setText(status.label);
-        badgeLabel.getStyleClass().setAll("status-badge", status.styleClass);
+        if (isFileItem(target)) {
+            return target.getParent();
+        }
+        return null;
     }
 
     private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
         if (!isFileItem(dragged) || target == null || target == dragged) {
             return false;
         }
-        if (isFileItem(target)) {
-            return target.getParent() == dragged.getParent();
-        }
-        return isDocumentItem(target) && target == dragged.getParent();
-    }
-
-    private boolean moveDraggedFile(TreeItem<SidebarNode> target) {
-        TreeItem<SidebarNode> documentItem = draggedTreeItem.getParent();
-        if (!isDocumentItem(documentItem)) {
+        TreeItem<SidebarNode> sourceDoc = dragged.getParent();
+        if (!isDocumentItem(sourceDoc)) {
             return false;
         }
-
-        List<TreeItem<SidebarNode>> siblings = documentItem.getChildren();
-        int draggedIndex = siblings.indexOf(draggedTreeItem);
-        int dropIndex = isFileItem(target) ? siblings.indexOf(target) : siblings.size();
-
-        if (draggedIndex < 0 || dropIndex < 0) {
+        TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+        if (!isDocumentItem(targetDoc)) {
             return false;
         }
-        if (draggedIndex < dropIndex) {
-            dropIndex--;
-        }
-        if (draggedIndex == dropIndex) {
+        if (sourceDoc == targetDoc) {
             return true;
         }
-
-        siblings.remove(draggedTreeItem);
-        siblings.add(dropIndex, draggedTreeItem);
-        persistDocumentOrderAsync(documentItem);
-        return true;
+        return isSameBox(sourceDoc, targetDoc);
     }
 
-    private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
+    private boolean isSameBox(TreeItem<SidebarNode> sourceDocItem, TreeItem<SidebarNode> targetDocItem) {
+        TreeItem<SidebarNode> sourceBox = sourceDocItem != null ? sourceDocItem.getParent() : null;
+        TreeItem<SidebarNode> targetBox = targetDocItem != null ? targetDocItem.getParent() : null;
+        if (sourceBox == null || targetBox == null) {
+            return false;
+        }
+        SidebarNode sourceValue = sourceBox.getValue();
+        SidebarNode targetValue = targetBox.getValue();
+        return sourceValue != null && targetValue != null
+                && sourceValue.kind() == SidebarNode.Kind.BOX
+                && targetValue.kind() == SidebarNode.Kind.BOX
+                && sourceValue.box().getBoxId() == targetValue.box().getBoxId();
+    }
+
+    private List<File> collectOrderedFiles(TreeItem<SidebarNode> documentItem) {
         List<File> orderedFiles = new ArrayList<>();
         int incrementalId = 1;
         for (TreeItem<SidebarNode> fileItem : documentItem.getChildren()) {
@@ -366,6 +814,11 @@ public class MainController {
                 orderedFiles.add(file);
             }
         }
+        return orderedFiles;
+    }
+
+    private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
+        List<File> orderedFiles = collectOrderedFiles(documentItem);
 
         if (orderedFiles.isEmpty()) {
             return;
@@ -392,6 +845,36 @@ public class MainController {
         worker.start();
     }
 
+    private void persistCrossDocumentMoveAsync(TreeItem<SidebarNode> sourceDocItem,
+                                              TreeItem<SidebarNode> targetDocItem,
+                                              File movedFile) {
+        List<File> sourceOrdered = collectOrderedFiles(sourceDocItem);
+        List<File> targetOrdered = collectOrderedFiles(targetDocItem);
+
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.moveFileAcrossDocuments(
+                        movedFile.getFileId(),
+                        sourceDocItem.getValue().document().getDocumentId(),
+                        targetDocItem.getValue().document().getDocumentId(),
+                        sourceOrdered,
+                        targetOrdered);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    loadSidebarTree();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Move failed");
+                    alert.setHeaderText("Could not move file");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-move-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
     private boolean isFileItem(TreeItem<SidebarNode> item) {
         return item != null && item.getValue() != null
                 && item.getValue().kind() == SidebarNode.Kind.FILE;
@@ -407,7 +890,7 @@ public class MainController {
         for (DocumentBranch docBranch : branch.documents()) {
             boxItem.getChildren().add(buildDocumentItem(docBranch));
         }
-        boxItem.setExpanded(true);
+        boxItem.setExpanded(false);
         return boxItem;
     }
 
@@ -433,22 +916,50 @@ public class MainController {
         loadAndDisplayFile(node.file());
     }
 
+    private void selectAdjacentFile(int delta) {
+        List<TreeItem<SidebarNode>> files = getFileItemsInOrder();
+        if (files.isEmpty()) {
+            return;
+        }
 
-    @FXML
-    private void onRotateLeftCommand() {
-        rotateViewer(-90);
+        TreeItem<SidebarNode> selected = sidebarTree.getSelectionModel().getSelectedItem();
+        int index = files.indexOf(selected);
+        int targetIndex;
+
+        if (index < 0) {
+            targetIndex = delta > 0 ? 0 : files.size() - 1;
+        } else {
+            targetIndex = index + delta;
+            if (targetIndex < 0 || targetIndex >= files.size()) {
+                return;
+            }
+        }
+
+        TreeItem<SidebarNode> target = files.get(targetIndex);
+        sidebarTree.getSelectionModel().select(target);
+        int row = sidebarTree.getRow(target);
+        if (row >= 0) {
+            sidebarTree.scrollTo(row);
+        }
     }
 
-    @FXML
-    private void onRotateRightCommand() {
-        rotateViewer(90);
+    private List<TreeItem<SidebarNode>> getFileItemsInOrder() {
+        List<TreeItem<SidebarNode>> files = new ArrayList<>();
+        TreeItem<SidebarNode> root = sidebarTree.getRoot();
+        if (root == null) {
+            return files;
+        }
+        for (TreeItem<SidebarNode> boxItem : root.getChildren()) {
+            for (TreeItem<SidebarNode> docItem : boxItem.getChildren()) {
+                for (TreeItem<SidebarNode> fileItem : docItem.getChildren()) {
+                    if (isFileItem(fileItem)) {
+                        files.add(fileItem);
+                    }
+                }
+            }
+        }
+        return files;
     }
-
-    @FXML
-    private void onResetRotationCommand() {
-        resetViewerRotation();
-    }
-
 
     /**
      * Fetch TIFF bytes for the clicked file and show in the viewer.
@@ -467,11 +978,16 @@ public class MainController {
                 }
                 Image image = tiffImageLoader.load(tiffBytes);
                 Platform.runLater(() -> {
+                    currentlyDisplayedFile = file;
                     pageImageView.setImage(image);
-                    pageImageView.setRotate(viewerRotationDegrees);
+                    pageImageView.setRotate(file.getRotationAngle());
+                    resetZoom();
                     viewerCaptionLabel.setText(
                             "File #" + file.getReferenceId()
-                                    + " — Document " + file.getDocumentId());
+                                    + " — Document " + file.getDocumentId()
+                                    + (file.getRotationAngle() != 0
+                                    ? "  ·  " + file.getRotationAngle() + "°"
+                                    : ""));
                 });
             } catch (SQLException | IOException ex) {
                 ex.printStackTrace();
@@ -486,6 +1002,16 @@ public class MainController {
 
     /** Append a new file under its document branch in the sidebar. */
     private void addFileToSidebar(File file) {
+        // Update the source-of-truth.
+        for (BoxBranch boxBranch : allBranches) {
+            for (DocumentBranch docBranch : boxBranch.documents()) {
+                if (docBranch.document().getDocumentId() == file.getDocumentId()) {
+                    docBranch.files().add(file);
+                    break;
+                }
+            }
+        }
+        // Update the visible tree.
         TreeItem<SidebarNode> docItem = findDocumentItem(file.getDocumentId());
         if (docItem != null) {
             docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(file)));
@@ -493,11 +1019,26 @@ public class MainController {
         }
     }
 
-    /** Append a new (empty) document branch under its parent box. */
-    private void addDocumentToSidebar(Document doc) {
+    private void addDocumentToSidebar(Document doc, File firstFile) {
+        // Update source-of-truth.
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() == doc.getBoxId()) {
+                List<File> files = new ArrayList<>();
+                if (firstFile != null) {
+                    files.add(firstFile);
+                }
+                boxBranch.documents().add(new DocumentBranch(doc, files));
+                break;
+            }
+        }
+
+        // Update the visible tree.
         TreeItem<SidebarNode> boxItem = findBoxItem(doc.getBoxId());
         if (boxItem != null) {
             TreeItem<SidebarNode> docItem = new TreeItem<>(SidebarNode.forDocument(doc));
+            if (firstFile != null) {
+                docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(firstFile)));
+            }
             docItem.setExpanded(true);
             boxItem.getChildren().add(docItem);
         }
@@ -536,6 +1077,7 @@ public class MainController {
             DialogPane dialogPane = loader.load();
             applyDialogTheme(dialogPane);
             NewScanDialogController dialogController = loader.getController();
+            dialogController.setCurrentUser(currentUser);
 
             Dialog<?> dialog = new Dialog<>();
             dialog.setDialogPane(dialogPane);
@@ -557,25 +1099,66 @@ public class MainController {
 
     private void onSessionStarted() {
         scanButton.setDisable(false);
+        if (finishSessionButton != null) {
+            finishSessionButton.setVisible(true);
+            finishSessionButton.setManaged(true);
+        }
         refreshSessionLabels();
         lastResultLabel.setText("Ready. Press Scan to fetch the next page.");
         viewerCaptionLabel.setText("No page to display yet");
         pageImageView.setImage(null);
+        resetZoom();
 
-        // Add the new Box + first Document into the sidebar tree.
-        TreeItem<SidebarNode> boxItem = new TreeItem<>(
-                SidebarNode.forBox(activeSession.getBox()));
-        TreeItem<SidebarNode> firstDocItem = new TreeItem<>(
-                SidebarNode.forDocument(activeSession.getFirstDocument()));
-        firstDocItem.setExpanded(true);
-        boxItem.getChildren().add(firstDocItem);
-        boxItem.setExpanded(true);
-        sidebarTree.getRoot().getChildren().add(boxItem);
+        // Add the new box to the in-memory model so it's available when we
+        // later return to history view.
+        allBranches.add(new BoxBranch(
+                activeSession.getBox(),
+                new ArrayList<>(List.of(new DocumentBranch(
+                        activeSession.getFirstDocument(), new ArrayList<>())))));
+
+        // Switch the sidebar to session-view: only the active box shows.
+        renderForCurrentMode();
 
         System.out.println("Session started — Box id "
                 + activeSession.getBox().getBoxId()
                 + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
     }
+
+    @FXML
+    private void onFinishSessionCommand() {
+        if (activeSession == null) {
+            return;
+        }
+
+        int finishedBoxId = activeSession.getBox().getBoxId();
+        activeSession = null;
+
+        // Update controls back to idle state.
+        scanButton.setDisable(true);
+        if (finishSessionButton != null) {
+            finishSessionButton.setVisible(false);
+            finishSessionButton.setManaged(false);
+        }
+        sessionInfoLabel.setText("No active session");
+        lastResultLabel.setText("Session finished. Box #" + finishedBoxId
+                + " moved to history.");
+        viewerCaptionLabel.setText("No page to display yet");
+        pageImageView.setImage(null);
+        resetZoom();
+        currentlyDisplayedFile = null;
+
+        // Clear any search filter so the full history is visible, then reload
+        // from the DB (picks up final state of the finished box) and render
+        // history view.
+        if (sidebarSearchField != null) {
+            sidebarSearchField.clear();
+        }
+        loadSidebarTreeAsync();
+    }
+
+
+    @FXML private TextField sidebarSearchField;
+    private List<BoxBranch> allBranches = new ArrayList<>();
 
     @FXML
     private void onScanCommand() {
@@ -625,18 +1208,38 @@ public class MainController {
     /** JavaFX thread. */
     private void applyResultsToUi(List<ScanResult> results) {
         for (ScanResult r : results) {
-            lastResultLabel.setText("Page saved as File #"
-                    + r.savedFile().getReferenceId()
-                    + " (" + r.savedFile().getTiffData().length + " bytes)");
-            System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
-                    + " in Document " + r.savedFile().getDocumentId());
+            switch (r.kind()) {
+                case PAGE -> {
+                    lastResultLabel.setText("Page saved as File #"
+                            + r.savedFile().getReferenceId()
+                            + " (" + r.savedFile().getTiffData().length + " bytes)");
+                    System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
+                            + " in Document " + r.savedFile().getDocumentId());
 
-            showPageInViewer(
-                    r.tiffBytes(),
-                    "File #" + r.savedFile().getReferenceId()
-                            + " — Document " + r.savedFile().getDocumentId()
-            );
-            addFileToSidebar(r.savedFile());
+                    showPageInViewer(
+                            r.tiffBytes(),
+                            "File #" + r.savedFile().getReferenceId()
+                                    + " — Document " + r.savedFile().getDocumentId(),
+                            r.savedFile()
+                    );
+                    addFileToSidebar(r.savedFile());
+                }
+                case DOCUMENT_SPLIT -> {
+                    lastResultLabel.setText("Barcode \"" + r.barcodeValue()
+                            + "\" detected — new Document #"
+                            + r.newDocument().getDocumentNumber() + " started");
+                    System.out.println("SPLIT: barcode " + r.barcodeValue()
+                            + " → Document id " + r.newDocument().getDocumentId());
+
+                    showPageInViewer(
+                            r.tiffBytes(),
+                            "File #" + r.savedFile().getReferenceId()
+                                    + " — Document " + r.savedFile().getDocumentId(),
+                            r.savedFile()
+                    );
+                    addDocumentToSidebar(r.newDocument(), r.savedFile());
+                }
+            }
         }
 
         refreshSessionLabels();
@@ -648,11 +1251,14 @@ public class MainController {
      * Failure here is non-fatal — we keep the previous image and log a note,
      * because the page is already saved/processed at this point.
      */
-    private void showPageInViewer(byte[] tiffBytes, String caption) {
+    private void showPageInViewer(byte[] tiffBytes, String caption, File file) {
         try {
             Image image = tiffImageLoader.load(tiffBytes);
             pageImageView.setImage(image);
-            pageImageView.setRotate(viewerRotationDegrees);
+            currentlyDisplayedFile = file;
+            int angle = file != null ? file.getRotationAngle() : 0;
+            pageImageView.setRotate(angle);
+            resetZoom();
             viewerCaptionLabel.setText(caption);
         } catch (IOException ex) {
             System.err.println("Could not decode TIFF for viewer: " + ex.getMessage());
@@ -661,18 +1267,65 @@ public class MainController {
     }
 
     private void rotateViewer(int deltaDegrees) {
-        viewerRotationDegrees = (viewerRotationDegrees + deltaDegrees) % 360;
-        if (viewerRotationDegrees < 0) {
-            viewerRotationDegrees += 360;
+        if (currentlyDisplayedFile == null) {
+            // No file to rotate — just show a hint.
+            viewerCaptionLabel.setText("Open a file first, then rotate it.");
+            return;
         }
-        pageImageView.setRotate(viewerRotationDegrees);
-        viewerCaptionLabel.setText("Rotation: " + (int) viewerRotationDegrees + "°");
+
+        int newAngle = (currentlyDisplayedFile.getRotationAngle() + deltaDegrees) % 360;
+        if (newAngle < 0) {
+            newAngle += 360;
+        }
+
+        applyRotationToFile(currentlyDisplayedFile, newAngle);
     }
 
     private void resetViewerRotation() {
-        viewerRotationDegrees = 0;
-        pageImageView.setRotate(viewerRotationDegrees);
-        viewerCaptionLabel.setText("Rotation: 0°");
+        if (currentlyDisplayedFile == null) {
+            viewerCaptionLabel.setText("Open a file first, then rotate it.");
+            return;
+        }
+        if (currentlyDisplayedFile.getRotationAngle() == 0) {
+            return; // already at 0, no DB write
+        }
+        applyRotationToFile(currentlyDisplayedFile, 0);
+    }
+
+    private void applyRotationToFile(File file, int newAngle) {
+        int previousAngle = file.getRotationAngle();
+        if (previousAngle == newAngle) {
+            return;
+        }
+
+        // 1. Update model + viewer immediately (optimistic).
+        file.setRotationAngle(newAngle);
+        pageImageView.setRotate(newAngle);
+        viewerCaptionLabel.setText("Rotation: " + newAngle + "°");
+
+        // 2. Persist on a background thread.
+        final int fileId = file.getFileId();
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.updateFileRotation(fileId, newAngle);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    // Roll back: restore previous angle in both model + viewer.
+                    file.setRotationAngle(previousAngle);
+                    if (currentlyDisplayedFile == file) {
+                        pageImageView.setRotate(previousAngle);
+                    }
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Rotation failed");
+                    alert.setHeaderText("Could not save rotation");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "sidebar-rotation-worker");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void refreshSessionLabels() {
@@ -745,12 +1398,32 @@ public class MainController {
     }
 
     private final ExportService exportService = new ExportService();
-    private final Set<Integer> renderedDocumentIds = new HashSet<>();
+
 
     @FXML
     private void onSaveCommand() {
         openExportDialog();
     }
+
+    @FXML
+    private void onShowShortcutsCommand() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    MainController.class.getResource(
+                            "/dk/easv/swiftdoc/view/shortcuts-dialog.fxml"));
+            DialogPane pane = loader.load();
+            applyDialogTheme(pane);
+
+            Dialog<?> dialog = new Dialog<>();
+            dialog.setDialogPane(pane);
+            dialog.setTitle("Keyboard Shortcuts");
+            dialog.showAndWait();
+        } catch (IOException ex) {
+            System.err.println("Failed to load shortcuts dialog: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+
 
     @FXML
     private void onExportMenuCommand() {
@@ -782,7 +1455,9 @@ public class MainController {
             }
 
             lastResultLabel.setText("Exporting box #" + boxId + "...");
-            Thread worker = new Thread(() -> performExport(boxId, request.outputDir()), "export-worker");
+            Thread worker = new Thread(
+                    () -> performExport(boxId, request.outputDir(), request.format()),
+                    "export-worker");
             worker.setDaemon(true);
             worker.start();
         } catch (IOException ex) {
@@ -839,9 +1514,13 @@ public class MainController {
         info.showAndWait();
     }
 
-    private void performExport(int boxId, java.io.File outputDir) {
+    private void performExport(int boxId, java.io.File outputDir,
+                               ExportDialogController.ExportFormat format) {
         try {
-            ExportResult result = exportService.exportBox(boxId, outputDir);
+            ExportResult result = (format == ExportDialogController.ExportFormat.SINGLE_PAGE)
+                    ? exportService.exportBoxAsSinglePages(boxId, outputDir)
+                    : exportService.exportBox(boxId, outputDir);
+
             Platform.runLater(() -> showExportResult(result));
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -857,10 +1536,11 @@ public class MainController {
     }
 
     private void showExportResult(ExportResult result) {
-        if (result != null && result.exportedDocumentIds() != null) {
-            renderedDocumentIds.addAll(result.exportedDocumentIds());
-            sidebarTree.refresh();
+        if (result != null && result.exportedDocumentIds() != null
+                && !result.exportedDocumentIds().isEmpty()) {
+            markDocumentsAsExportedAsync(result.exportedDocumentIds());
         }
+
 
         StringBuilder summary = new StringBuilder();
         summary.append("Wrote ").append(result.filesWritten())
@@ -887,6 +1567,63 @@ public class MainController {
     public ScanSession getActiveSession() {
         return activeSession;
     }
+
+    private void markDocumentsAsExportedAsync(List<Integer> exportedDocumentIds) {
+        // Snapshot current statuses for rollback if any DB write fails.
+        java.util.Map<Integer, Document.Status> previous = new java.util.HashMap<>();
+        for (Integer docId : exportedDocumentIds) {
+            Document doc = findDocumentById(docId);
+            if (doc != null) {
+                previous.put(docId, doc.getStatus());
+                doc.setStatus(Document.Status.EXPORTED);
+            }
+        }
+        sidebarTree.refresh();
+
+        Thread worker = new Thread(() -> {
+            try {
+                for (Integer docId : exportedDocumentIds) {
+                    sidebarService.updateDocumentStatus(docId, Document.Status.EXPORTED);
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    // Roll back model changes.
+                    for (java.util.Map.Entry<Integer, Document.Status> entry : previous.entrySet()) {
+                        Document doc = findDocumentById(entry.getKey());
+                        if (doc != null) {
+                            doc.setStatus(entry.getValue());
+                        }
+                    }
+                    sidebarTree.refresh();
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("Status update failed");
+                    alert.setHeaderText("Exported, but could not flag documents as exported");
+                    alert.setContentText("The files were written to disk successfully, but "
+                            + "their status in the database could not be updated.\n\n"
+                            + "Details: " + ex.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        }, "mark-exported-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Find a Document by id in the in-memory branch list.
+     */
+    private Document findDocumentById(int documentId) {
+        for (BoxBranch boxBranch : allBranches) {
+            for (DocumentBranch docBranch : boxBranch.documents()) {
+                if (docBranch.document().getDocumentId() == documentId) {
+                    return docBranch.document();
+                }
+            }
+        }
+        return null;
+    }
+
 
     @FXML
     private void onThemeToggle() {

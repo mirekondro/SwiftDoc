@@ -1,5 +1,6 @@
 package dk.easv.swiftdoc.service;
 
+import dk.easv.swiftdoc.dal.BoxDAO;
 import dk.easv.swiftdoc.dal.ClientDAO;
 import dk.easv.swiftdoc.dal.ProfileDAO;
 import dk.easv.swiftdoc.model.Client;
@@ -15,18 +16,24 @@ public class ProfileService {
 
     private final ProfileDAO profileDAO;
     private final ClientDAO clientDAO;
+    private final BoxDAO boxDAO;
 
     public ProfileService() {
-        this(new ProfileDAO(), new ClientDAO());
+        this(new ProfileDAO(), new ClientDAO(), new BoxDAO());
     }
 
-    public ProfileService(ProfileDAO profileDAO, ClientDAO clientDAO) {
+    public ProfileService(ProfileDAO profileDAO, ClientDAO clientDAO, BoxDAO boxDAO) {
         this.profileDAO = profileDAO;
         this.clientDAO = clientDAO;
+        this.boxDAO = boxDAO;
     }
 
     public List<Client> getClients() throws SQLException {
         return clientDAO.getAll();
+    }
+
+    public List<ScanningProfile> getProfiles() throws SQLException {
+        return profileDAO.getAll();
     }
 
     public ScanningProfile createProfile(String profileName, Client client,
@@ -39,6 +46,24 @@ public class ProfileService {
         }
         return profileDAO.create(profileName.trim(), client.getClientId(), null,
                 duplicateDetectionEnabled);
+    }
+
+    public void updateProfile(int profileId, String profileName, Client client,
+                              boolean duplicateDetectionEnabled) throws SQLException {
+        if (client == null) throw new IllegalArgumentException("Client is required.");
+        if (profileName == null || profileName.isBlank())
+            throw new IllegalArgumentException("Profile name cannot be empty.");
+        profileDAO.update(profileId, profileName.trim(), client.getClientId(),
+                duplicateDetectionEnabled);
+    }
+
+    public void deleteProfile(int profileId) throws SQLException {
+        if (boxDAO.countByProfile(profileId) > 0) {
+            throw new IllegalStateException(
+                    "Cannot delete profile — it still has scanning boxes. " +
+                    "Remove all boxes first.");
+        }
+        profileDAO.delete(profileId);
     }
 
 }

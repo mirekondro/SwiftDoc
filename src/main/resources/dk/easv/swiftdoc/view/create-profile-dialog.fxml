@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="dk.easv.swiftdoc.controller.CreateProfileDialogController"
+            fx:id="dialogPane"
+            styleClass="dialog-root">
+    <headerText>Create Profile</headerText>
+    <contentText>Profiles bundle scanning settings for a specific client.</contentText>
+
+    <content>
+        <VBox spacing="14.0" styleClass="dialog-content">
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Profile Name" styleClass="section-title"/>
+                <TextField fx:id="profileNameField" promptText="e.g. 'Standard municipal box'"/>
+                <Label fx:id="profileNameErrorLabel" text=""
+                       style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Client" styleClass="section-title"/>
+                <ComboBox fx:id="clientComboBox" promptText="Select a client..."
+                          maxWidth="1.7976931348623157E308"/>
+                <Label fx:id="clientErrorLabel" text=""
+                       style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
+                <Label text="One client can have many profiles."
+                       styleClass="dialog-muted" wrapText="true"/>
+            </VBox>
+
+            <VBox spacing="8.0" styleClass="dialog-card">
+                <Label text="Scan Options" styleClass="section-title"/>
+                <CheckBox fx:id="duplicateDetectionCheckBox"
+                          text="Enable duplicate detection"/>
+                <Label text="When enabled, scanning detects and flags repeated pages."
+                       styleClass="dialog-muted" wrapText="true"/>
+            </VBox>
+        </VBox>
+    </content>
+
+    <buttonTypes>
+        <ButtonType fx:id="createButtonType" text="Create" buttonData="OK_DONE"/>
+        <ButtonType fx:id="cancelButtonType" text="Cancel" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
+</DialogPane>

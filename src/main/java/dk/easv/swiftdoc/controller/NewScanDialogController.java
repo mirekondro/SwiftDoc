@@ -2,6 +2,7 @@ package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.model.Client;
 import dk.easv.swiftdoc.model.ScanningProfile;
+import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ProfileService;
 import dk.easv.swiftdoc.service.ScanSession;
 import dk.easv.swiftdoc.service.ScanSessionService;
@@ -39,6 +40,7 @@ public class NewScanDialogController {
 
     /** Result of the dialog. Null until Start Scan succeeds. */
     private ScanSession createdSession;
+    private User currentUser;
 
     @FXML private DialogPane dialogPane;
     @FXML private ComboBox<ScanningProfile> profileComboBox;
@@ -46,7 +48,6 @@ public class NewScanDialogController {
     @FXML private TextField boxNameTextField;
     @FXML private Label boxNameErrorLabel;
     @FXML private CheckBox duplicateDetectionCheckBox;
-    @FXML private CheckBox separateDocumentsCheckBox;
     @FXML private TextArea notesTextArea;
 
     @FXML private ButtonType startScanButtonType;
@@ -55,18 +56,27 @@ public class NewScanDialogController {
 
     @FXML
     private void initialize() {
-        loadProfiles();
         wireProfileSelection();
         wireValidation();
         wireButtons();
     }
 
+    public void setCurrentUser(User user) {
+        this.currentUser = user;
+        loadProfiles();
+    }
+
     private void loadProfiles() {
         try {
-            List<ScanningProfile> profiles = sessionService.getAvailableProfiles();
+            List<ScanningProfile> profiles;
+            if (currentUser != null && !currentUser.isAdmin()) {
+                profiles = sessionService.getAvailableProfiles(currentUser.getUserId(), false);
+            } else {
+                profiles = sessionService.getAvailableProfiles();
+            }
             profileComboBox.setItems(FXCollections.observableArrayList(profiles));
             if (profiles.isEmpty()) {
-                profileDescriptionLabel.setText("No profiles available. Ask an admin to create one.");
+                profileDescriptionLabel.setText("No profiles available. Ask an admin to assign profiles to your account.");
             }
         } catch (SQLException ex) {
             showError("Could not load profiles", ex.getMessage());
@@ -77,50 +87,52 @@ public class NewScanDialogController {
     @FXML
     private void onCreateProfile() {
         try {
-            List<Client> clients = profileService.getClients();
+            // Load the dialog FXML.
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                    NewScanDialogController.class.getResource(
+                            "/dk/easv/swiftdoc/view/create-profile-dialog.fxml"));
+            javafx.scene.control.DialogPane pane = loader.load();
+            CreateProfileDialogController dialogController = loader.getController();
+
+            // Populate the client dropdown.
+            java.util.List<dk.easv.swiftdoc.model.Client> clients =
+                    profileService.getClients();
             if (clients.isEmpty()) {
                 showError("No clients", "Create a client first before adding profiles.");
                 return;
             }
+            dialogController.setClients(clients);
 
-            DialogPane pane = new DialogPane();
-            pane.setHeaderText("Create Profile");
+            // Apply the same theme/styling the parent dialog uses.
+            applyDialogTheme(pane);
 
-            TextField nameField = new TextField();
-            nameField.setPromptText("Profile name");
-
-            ComboBox<Client> clientBox = new ComboBox<>(FXCollections.observableArrayList(clients));
-            clientBox.setPromptText("Select client");
-
-            CheckBox duplicateCheckBox = new CheckBox("Enable duplicate detection");
-
-            VBox content = new VBox(8.0, new Label("Profile Name"), nameField,
-                    new Label("Client"), clientBox,
-                    duplicateCheckBox);
-            pane.setContent(content);
-
-            ButtonType create = new ButtonType("Create", ButtonType.OK.getButtonData());
-            pane.getButtonTypes().addAll(create, ButtonType.CANCEL);
-
-            Dialog<ButtonType> dialog = new Dialog<>();
+            javafx.scene.control.Dialog<javafx.scene.control.ButtonType> dialog =
+                    new javafx.scene.control.Dialog<>();
             dialog.setDialogPane(pane);
             dialog.setTitle("Create Profile");
+            dialog.showAndWait();
 
-            dialog.showAndWait().ifPresent(result -> {
-                if (result == create) {
-                    try {
-                        ScanningProfile created = profileService.createProfile(
-                                nameField.getText(), clientBox.getValue(),
-                                duplicateCheckBox.isSelected());
-                        loadProfiles();
-                        profileComboBox.getSelectionModel().select(created);
-                    } catch (SQLException | IllegalArgumentException ex) {
-                        showError("Could not create profile", ex.getMessage());
-                    }
-                }
-            });
-        } catch (SQLException ex) {
+            CreateProfileDialogController.CreateRequest request =
+                    dialogController.getCreateRequest();
+            if (request == null) {
+                return; // user cancelled or validation failed
+            }
+
+            try {
+                dk.easv.swiftdoc.model.ScanningProfile created =
+                        profileService.createProfile(
+                                request.profileName(),
+                                request.client(),
+                                request.duplicateDetectionEnabled());
+                loadProfiles();
+                profileComboBox.getSelectionModel().select(created);
+            } catch (java.sql.SQLException | IllegalArgumentException ex) {
+                showError("Could not create profile", ex.getMessage());
+            }
+        } catch (java.sql.SQLException ex) {
             showError("Could not load clients", ex.getMessage());
+        } catch (java.io.IOException ex) {
+            showError("Could not open dialog", ex.getMessage());
         }
     }
 
@@ -191,7 +203,7 @@ public class NewScanDialogController {
         createdSession = null;
 
         try {
-            createdSession = sessionService.startSession(profile, boxName);
+            createdSession = sessionService.startSession(profile, boxName, currentUser);
         } catch (IllegalArgumentException ex) {
             event.consume();
             showError("Invalid input", ex.getMessage());
@@ -219,8 +231,8 @@ public class NewScanDialogController {
         summary.append("Options:\n");
         summary.append("  Duplicate detection:   ")
                 .append(profile != null && profile.isDuplicateDetectionEnabled()).append("\n");
-        summary.append("  Separate document per page: ")
-                .append(separateDocumentsCheckBox.isSelected()).append("\n");
+        summary.append("  Separate document per page: ");
+
         if (notes != null && !notes.isBlank()) {
             summary.append("\nNotes:\n").append(notes.trim());
         }
@@ -239,6 +251,24 @@ public class NewScanDialogController {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
+    private void applyDialogTheme(javafx.scene.control.DialogPane pane) {
+        if (pane == null) return;
+        String sheet = NewScanDialogController.class.getResource(
+                "/dk/easv/swiftdoc/view/app.css").toExternalForm();
+        if (!pane.getStylesheets().contains(sheet)) {
+            pane.getStylesheets().add(sheet);
+        }
+        if (!pane.getStyleClass().contains("dialog-root")) {
+            pane.getStyleClass().add("dialog-root");
+        }
+        // Mirror parent dialog's dark-mode class if present.
+        if (dialogPane != null && dialogPane.getStyleClass().contains("theme-dark")
+                && !pane.getStyleClass().contains("theme-dark")) {
+            pane.getStyleClass().add("theme-dark");
+        }
+    }
+
 
     /**
      * @return the ScanSession (Box + first Document) created by Start Scan,

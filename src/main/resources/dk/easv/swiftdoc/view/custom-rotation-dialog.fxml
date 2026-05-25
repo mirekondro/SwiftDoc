@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Slider?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="dk.easv.swiftdoc.controller.CustomRotationDialogController"
+            fx:id="dialogPane"
+            styleClass="dialog-root">
+    <headerText>Custom Rotation</headerText>
+    <contentText>Drag the slider or type an exact angle. Changes preview live.</contentText>
+
+    <content>
+        <VBox spacing="14.0" styleClass="dialog-content">
+            <VBox spacing="10.0" styleClass="dialog-card">
+                <Label text="Angle" styleClass="section-title"/>
+                <HBox spacing="12.0" alignment="CENTER_LEFT">
+                    <Slider fx:id="angleSlider"
+                            min="0" max="359"
+                            value="0"
+                            showTickLabels="true"
+                            showTickMarks="true"
+                            majorTickUnit="45"
+                            minorTickCount="4"
+                            blockIncrement="1"
+                            HBox.hgrow="ALWAYS"/>
+                    <Spinner fx:id="angleSpinner"
+                             editable="true"
+                             prefWidth="90.0"/>
+                    <Label text="°" styleClass="muted"/>
+                </HBox>
+                <Label text="Tip: type a negative number to rotate counter-clockwise (e.g. -5)."
+                       styleClass="dialog-muted" wrapText="true"/>
+            </VBox>
+        </VBox>
+    </content>
+
+    <buttonTypes>
+        <ButtonType fx:id="applyButtonType" text="Apply" buttonData="OK_DONE"/>
+        <ButtonType fx:id="cancelButtonType" text="Cancel" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
+</DialogPane>

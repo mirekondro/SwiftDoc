@@ -32,7 +32,27 @@ public class ExportDialogController {
         }
     }
 
-    public record ExportRequest(ExportMode mode, File outputDir) {}
+    /**
+     * Output format. Multi-page bundles all of a Document's files into one
+     * TIFF. Single-page writes each File as its own TIFF.
+     */
+    public enum ExportFormat {
+        MULTI_PAGE("Multi-page (one file per Document)"),
+        SINGLE_PAGE("Single-page (one file per page)");
+
+        private final String label;
+
+        ExportFormat(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    public record ExportRequest(ExportMode mode, ExportFormat format, File outputDir) {}
 
     private ExportRequest exportRequest;
 
@@ -40,9 +60,13 @@ public class ExportDialogController {
     @FXML private ToggleGroup modeToggleGroup;
     @FXML private RadioButton activeSessionRadio;
     @FXML private RadioButton selectedSidebarRadio;
+    @FXML private ToggleGroup formatToggleGroup;
+    @FXML private RadioButton multiPageRadio;
+    @FXML private RadioButton singlePageRadio;
     @FXML private TextField folderTextField;
     @FXML private Label folderErrorLabel;
     @FXML private Label modeHintLabel;
+    @FXML private Label formatHintLabel;
 
     @FXML private ButtonType exportButtonType;
     @FXML private ButtonType cancelButtonType;
@@ -54,8 +78,18 @@ public class ExportDialogController {
         activeSessionRadio.setSelected(true);
         updateModeHint(ExportMode.ACTIVE_SESSION);
 
+        multiPageRadio.setUserData(ExportFormat.MULTI_PAGE);
+        singlePageRadio.setUserData(ExportFormat.SINGLE_PAGE);
+        multiPageRadio.setSelected(true);
+        updateFormatHint(ExportFormat.MULTI_PAGE);
+
         modeToggleGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             updateModeHint(getSelectedMode());
+            refreshExportEnabled();
+        });
+
+        formatToggleGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            updateFormatHint(getSelectedFormat());
             refreshExportEnabled();
         });
 
@@ -86,13 +120,14 @@ public class ExportDialogController {
         exportRequest = null;
 
         ExportMode mode = getSelectedMode();
+        ExportFormat format = getSelectedFormat();
         File outputDir = resolveOutputDir();
-        if (mode == null || outputDir == null) {
+        if (mode == null || format == null || outputDir == null) {
             updateFolderError();
             event.consume();
             return;
         }
-        exportRequest = new ExportRequest(mode, outputDir);
+        exportRequest = new ExportRequest(mode, format, outputDir);
     }
 
     private File resolveOutputDir() {
@@ -123,7 +158,9 @@ public class ExportDialogController {
         if (exportBtn == null) {
             return;
         }
-        exportBtn.setDisable(getSelectedMode() == null || resolveOutputDir() == null);
+        exportBtn.setDisable(getSelectedMode() == null
+                || getSelectedFormat() == null
+                || resolveOutputDir() == null);
     }
 
     private void updateModeHint(ExportMode mode) {
@@ -138,12 +175,33 @@ public class ExportDialogController {
         }
     }
 
+    private void updateFormatHint(ExportFormat format) {
+        if (format == null) {
+            formatHintLabel.setText("Select output format.");
+            return;
+        }
+        switch (format) {
+            case MULTI_PAGE -> formatHintLabel.setText(
+                    "One TIFF per Document, all pages bundled together.");
+            case SINGLE_PAGE -> formatHintLabel.setText(
+                    "One TIFF per scanned page. More files, easier to share individually.");
+        }
+    }
+
     private ExportMode getSelectedMode() {
         if (modeToggleGroup.getSelectedToggle() == null) {
             return null;
         }
         Object value = modeToggleGroup.getSelectedToggle().getUserData();
         return value instanceof ExportMode ? (ExportMode) value : null;
+    }
+
+    private ExportFormat getSelectedFormat() {
+        if (formatToggleGroup.getSelectedToggle() == null) {
+            return null;
+        }
+        Object value = formatToggleGroup.getSelectedToggle().getUserData();
+        return value instanceof ExportFormat ? (ExportFormat) value : null;
     }
 
     public ExportRequest getExportRequest() {

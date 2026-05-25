@@ -31,6 +31,9 @@ public class BoxDAO {
             "SELECT BoxId, BoxName, ProfileId, GlobalRotation " +
                     "FROM dbo.Boxes ORDER BY BoxId";
 
+    private static final String COUNT_BY_PROFILE =
+            "SELECT COUNT(*) FROM dbo.Boxes WHERE ProfileId = ?";
+
     public Box create(String boxName, int profileId) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement insert = conn.prepareStatement(
@@ -83,6 +86,17 @@ public class BoxDAO {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 return Optional.of(mapRow(rs));
+            }
+        }
+    }
+
+    public int countByProfile(int profileId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(COUNT_BY_PROFILE)) {
+            stmt.setInt(1, profileId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                rs.next();
+                return rs.getInt(1);
             }
         }
     }

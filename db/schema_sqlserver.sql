@@ -100,9 +100,17 @@ BEGIN
         DocumentId INT IDENTITY(1,1) PRIMARY KEY,
         BoxId INT NOT NULL,
         BarcodeValue NVARCHAR(255) NULL,
+        DocumentStatus NVARCHAR(20) NOT NULL DEFAULT 'NEW',
         CONSTRAINT FK_Documents_Boxes
             FOREIGN KEY (BoxId) REFERENCES dbo.Boxes(BoxId)
     );
+END;
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.Documents', 'DocumentStatus') IS NULL
+    BEGIN
+        ALTER TABLE dbo.Documents ADD DocumentStatus NVARCHAR(20) NOT NULL DEFAULT 'NEW';
+    END;
 END;
 
 IF OBJECT_ID('dbo.Files', 'U') IS NULL
@@ -131,6 +139,17 @@ BEGIN
         CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         CONSTRAINT FK_SystemLogs_Users
             FOREIGN KEY (PerformedBy) REFERENCES dbo.Users(UserId)
+    );
+END;
+
+IF OBJECT_ID('dbo.UserProfileAccess', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.UserProfileAccess (
+        UserId    INT NOT NULL,
+        ProfileId INT NOT NULL,
+        CONSTRAINT PK_UserProfileAccess PRIMARY KEY (UserId, ProfileId),
+        CONSTRAINT FK_UPA_Users    FOREIGN KEY (UserId)    REFERENCES dbo.Users(UserId)    ON DELETE CASCADE,
+        CONSTRAINT FK_UPA_Profiles FOREIGN KEY (ProfileId) REFERENCES dbo.Profiles(ProfileId) ON DELETE CASCADE
     );
 END;
 

@@ -93,6 +93,7 @@ public class ExportService {
         ScanningProfile profile = profileDAO.getById(box.getProfileId()).orElseThrow(
                 () -> new IllegalArgumentException("Profile id " + box.getProfileId() + " not found"));
         List<Document> documents = documentDAO.getByBox(boxId);
+        java.io.File targetDir = resolveOutputSubfolder(outputDir, profile, boxId);
 
         int filesWritten = 0;
         int pagesWritten = 0;
@@ -129,7 +130,8 @@ public class ExportService {
 
             String fileName = buildFileName(profile.getProfileName(),
                     box.getBoxId(), doc.getDocumentNumber());
-            java.io.File outputFile = new java.io.File(outputDir, fileName);
+            java.io.File outputFile = new java.io.File(targetDir, fileName);
+
 
             tiffExporter.writeMultiPage(pages, outputFile);
             filesWritten++;
@@ -138,7 +140,7 @@ public class ExportService {
         }
 
         return new ExportResult(filesWritten, pagesWritten, skipped,
-                outputDir.getAbsolutePath(), exportedDocumentIds);
+                targetDir.getAbsolutePath(), exportedDocumentIds);
     }
 
     /**
@@ -189,9 +191,113 @@ public class ExportService {
      * with non-alphanumeric characters in profileName replaced by '_'.
      */
     private String buildFileName(String profileName, int boxId, int documentNumber) {
-        String safe = (profileName == null || profileName.isBlank())
-                ? "profile"
-                : profileName.trim().replaceAll("[^A-Za-z0-9._-]", "_");
-        return safe + "_" + boxId + "_" + documentNumber + ".tiff";
+        return sanitizeForFilesystem(profileName)
+                + "_" + boxId + "_" + documentNumber + ".tiff";
     }
+    public ExportResult exportBoxAsSinglePages(int boxId, java.io.File outputDir)
+            throws SQLException, IOException {
+        if (outputDir == null) {
+            throw new IllegalArgumentException("outputDir must not be null");
+        }
+        if (!outputDir.isDirectory()) {
+            throw new IllegalArgumentException(
+                    "outputDir must be an existing directory: " + outputDir);
+        }
+
+        Box box = boxDAO.getById(boxId).orElseThrow(
+                () -> new IllegalArgumentException("Box id " + boxId + " not found"));
+        ScanningProfile profile = profileDAO.getById(box.getProfileId()).orElseThrow(
+                () -> new IllegalArgumentException("Profile id " + box.getProfileId() + " not found"));
+        List<Document> documents = documentDAO.getByBox(boxId);
+
+        java.io.File targetDir = resolveOutputSubfolder(outputDir, profile, boxId);
+        int filesWritten = 0;
+        int pagesWritten = 0;
+        List<String> skipped = new ArrayList<>();
+        List<Integer> exportedDocumentIds = new ArrayList<>();
+
+        for (Document doc : documents) {
+            List<File> files = fileDAO.getByDocument(doc.getDocumentId());
+
+            if (files.isEmpty()) {
+                skipped.add("Document #" + doc.getDocumentNumber() + " (no pages)");
+                continue;
+            }
+
+            boolean anyExportedForThisDoc = false;
+            int pageNumber = 0;
+
+            for (File file : files) {
+                pageNumber++;
+
+                byte[] tiff = fileDAO.getTiffData(file.getFileId());
+                if (tiff == null || tiff.length == 0) {
+                    skipped.add("Document #" + doc.getDocumentNumber()
+                            + " page " + pageNumber + " (no data)");
+                    continue;
+                }
+
+                BufferedImage decoded = decode(tiff);
+                int combinedRotation = file.getRotationAngle() + box.getGlobalRotation();
+                BufferedImage rotated = rotate(decoded, combinedRotation);
+
+                String fileName = buildSinglePageFileName(
+                        profile.getProfileName(),
+                        box.getBoxId(),
+                        doc.getDocumentNumber(),
+                        pageNumber);
+                java.io.File outputFile = new java.io.File(targetDir, fileName);
+
+                tiffExporter.writeMultiPage(List.of(rotated), outputFile);
+                filesWritten++;
+                pagesWritten++;
+                anyExportedForThisDoc = true;
+            }
+
+            if (anyExportedForThisDoc) {
+                exportedDocumentIds.add(doc.getDocumentId());
+            }
+        }
+
+        return new ExportResult(filesWritten, pagesWritten, skipped,
+                targetDir.getAbsolutePath(), exportedDocumentIds);
+    }
+
+    private java.io.File resolveOutputSubfolder(java.io.File outputDir,
+                                                ScanningProfile profile,
+                                                int boxId) throws IOException {
+        String safeName = sanitizeForFilesystem(profile.getProfileName());
+        String subfolderName = safeName + "_" + boxId;
+        java.io.File subfolder = new java.io.File(outputDir, subfolderName);
+        if (!subfolder.exists()) {
+            if (!subfolder.mkdirs()) {
+                throw new IOException(
+                        "Could not create export subfolder: " + subfolder.getAbsolutePath());
+            }
+        } else if (!subfolder.isDirectory()) {
+            throw new IOException("Export path exists but is not a directory: "
+                    + subfolder.getAbsolutePath());
+        }
+        return subfolder;
+    }
+
+
+    private String sanitizeForFilesystem(String name) {
+        if (name == null || name.isBlank()) {
+            return "profile";
+        }
+        return name.trim().replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+
+    /**
+     * Build a filesystem-safe filename for a single-page export:
+     *   {profileName}_{boxId}_{docNumber}_{pageNumber}.tiff
+     */
+    private String buildSinglePageFileName(String profileName, int boxId,
+                                           int documentNumber, int pageNumber) {
+        return sanitizeForFilesystem(profileName)
+                + "_" + boxId + "_" + documentNumber + "_" + pageNumber + ".tiff";
+    }
+
 }

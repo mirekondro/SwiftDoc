@@ -83,4 +83,24 @@ public class SidebarService {
     public void updateFileOrder(int documentId, List<File> orderedFiles) throws SQLException {
         fileDAO.updateIncrementalOrder(documentId, orderedFiles);
     }
+
+    /**
+     * Update the status of a document.
+     */
+    public void updateDocumentStatus(int documentId, Document.Status status) throws SQLException {
+        documentDAO.updateStatus(documentId, status);
+    }
+
+    /**
+     * Move a file between documents and persist ordering for both documents.
+     */
+    public void moveFileAcrossDocuments(int fileId, int fromDocumentId, int toDocumentId,
+                                        List<File> sourceOrder, List<File> targetOrder)
+            throws SQLException {
+        fileDAO.moveFile(fileId, fromDocumentId, toDocumentId, sourceOrder, targetOrder);
+    }
+
+    public void updateFileRotation(int fileId, int rotationAngle) throws SQLException {
+        fileDAO.updateRotation(fileId, rotationAngle);
+    }
 }
