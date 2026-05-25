@@ -47,6 +47,13 @@ public class ProfileDAO {
             "INSERT INTO dbo.Profiles (ProfileName, ClientId, SplitRule, DuplicateDetectionEnabled) "
                     + "VALUES (?, ?, ?, ?)";
 
+    private static final String UPDATE_PROFILE =
+            "UPDATE dbo.Profiles SET ProfileName = ?, ClientId = ?, DuplicateDetectionEnabled = ? "
+                    + "WHERE ProfileId = ?";
+
+    private static final String DELETE_PROFILE =
+            "DELETE FROM dbo.Profiles WHERE ProfileId = ?";
+
     public List<ScanningProfile> getAll() throws SQLException {
         List<ScanningProfile> profiles = new ArrayList<>();
         try (Connection conn = DBConnection.getInstance().getConnection();
@@ -115,6 +122,26 @@ public class ProfileDAO {
             }
         }
         throw new SQLException("Failed to create profile (no key returned).");
+    }
+
+    public void update(int profileId, String profileName, int clientId,
+                       boolean duplicateDetectionEnabled) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_PROFILE)) {
+            stmt.setString(1, profileName);
+            stmt.setInt(2, clientId);
+            stmt.setBoolean(3, duplicateDetectionEnabled);
+            stmt.setInt(4, profileId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void delete(int profileId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(DELETE_PROFILE)) {
+            stmt.setInt(1, profileId);
+            stmt.executeUpdate();
+        }
     }
 
     private ScanningProfile mapRow(ResultSet rs) throws SQLException {
