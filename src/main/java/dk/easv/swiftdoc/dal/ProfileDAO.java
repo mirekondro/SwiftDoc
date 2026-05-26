@@ -81,7 +81,8 @@ public class ProfileDAO {
     }
 
     private static final String UPDATE_PROFILE =
-            "UPDATE dbo.Profiles SET ProfileName = ?, ClientId = ?, DuplicateDetectionEnabled = ? "
+            "UPDATE dbo.Profiles SET ProfileName = ?, ClientId = ?, DuplicateDetectionEnabled = ?, "
+                    + "ProfileRotation = ?, ProfileBrightness = ?, BlackAndWhite = ? "
                     + "WHERE ProfileId = ?";
 
     private static final String DELETE_PROFILE =
@@ -131,40 +132,19 @@ public class ProfileDAO {
         return profiles;
     }
 
-    public ScanningProfile create(String profileName, int clientId, String splitRule,
-                                  boolean duplicateDetectionEnabled) throws SQLException {
-        try (Connection conn = DBConnection.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(INSERT_PROFILE, Statement.RETURN_GENERATED_KEYS)) {
-
-            stmt.setString(1, profileName);
-            stmt.setInt(2, clientId);
-            stmt.setString(3, splitRule);
-            stmt.setBoolean(4, duplicateDetectionEnabled);
-
-            stmt.executeUpdate();
-
-            try (ResultSet keys = stmt.getGeneratedKeys()) {
-                if (keys.next()) {
-                    int profileId = keys.getInt(1);
-                    // ClientName left null here — the create flow doesn't need
-                    // it, and the dialog refresh will reload via getAll() which
-                    // does the JOIN and fills it in.
-                    return new ScanningProfile(profileId, profileName, splitRule, clientId, null,
-                            duplicateDetectionEnabled);
-                }
-            }
-        }
-        throw new SQLException("Failed to create profile (no key returned).");
-    }
-
     public void update(int profileId, String profileName, int clientId,
-                       boolean duplicateDetectionEnabled) throws SQLException {
+                       boolean duplicateDetectionEnabled,
+                       int profileRotation, int profileBrightness,
+                       boolean blackAndWhite) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(UPDATE_PROFILE)) {
             stmt.setString(1, profileName);
             stmt.setInt(2, clientId);
             stmt.setBoolean(3, duplicateDetectionEnabled);
-            stmt.setInt(4, profileId);
+            stmt.setInt(4, profileRotation);
+            stmt.setInt(5, profileBrightness);
+            stmt.setBoolean(6, blackAndWhite);
+            stmt.setInt(7, profileId);
             stmt.executeUpdate();
         }
     }

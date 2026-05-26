@@ -100,11 +100,17 @@ public class HelloApplication extends Application {
     }
 
     private void showStartupErrorDialog(Exception ex) {
-        Alert alert = new Alert(Alert.AlertType.ERROR,
-                "Failed to start the application.\n\n" + ex.getMessage(), ButtonType.OK);
-        alert.setTitle("Startup Error");
-        alert.setHeaderText("SwiftDoc could not be started");
-        alert.showAndWait();
+        ex.printStackTrace();   // real error goes to console
+        try {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Startup Error");
+            alert.setHeaderText("SwiftDoc could not be started");
+            alert.setContentText("Failed to start the application.\n\n" + ex.getMessage());
+            alert.showAndWait();
+        } catch (Throwable t) {
+            // If even showing the dialog fails, just log — never recurse.
+            t.printStackTrace();
+        }
     }
 
     private void testDatabaseConnectionInBackground() {

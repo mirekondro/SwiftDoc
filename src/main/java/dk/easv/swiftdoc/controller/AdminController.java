@@ -1,16 +1,13 @@
 package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.model.Client;
-import dk.easv.swiftdoc.model.ScanningProfile;
 import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ProfileService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -19,8 +16,6 @@ public class AdminController {
     private final ProfileService profileService = new ProfileService();
 
     @FXML private Label welcomeLabel;
-    @FXML private ListView<ScanningProfile> profilesList;
-    @FXML private Label profileDetailsLabel;
     @FXML private ListView<Client> clientsList;
     @FXML private UserManagementController userManagementController;
 
@@ -28,7 +23,13 @@ public class AdminController {
 
     @FXML
     private void initialize() {
-        onRefreshClients();
+        // Profiles are handled by the included ProfileManagementController.
+        // Only load clients here if this view still owns a clients list.
+        javafx.application.Platform.runLater(() -> {
+            if (clientsList != null) {
+                onRefreshClients();
+            }
+        });
     }
 
     public void setCurrentUser(User user) {
@@ -41,69 +42,11 @@ public class AdminController {
         }
     }
 
-
-    // ---------------- Profiles ----------------
-
-    @FXML
-    private void onRefreshProfiles() {
-        try {
-            List<ScanningProfile> profiles = profileService.getProfiles();
-            profilesList.setItems(FXCollections.observableArrayList(profiles));
-        } catch (SQLException ex) {
-            showError("Could not load profiles", ex.getMessage());
-        }
-    }
-
-    @FXML
-    private void onCreateProfile() {
-        try {
-            FXMLLoader loader = new FXMLLoader(
-                    AdminController.class.getResource("/dk/easv/swiftdoc/view/create-profile-dialog.fxml"));
-            DialogPane pane = loader.load();
-            CreateProfileDialogController dialogController = loader.getController();
-
-            List<Client> clients = profileService.getClients();
-            if (clients.isEmpty()) {
-                showError("No clients", "Add a client to dbo.Clients before creating a profile.");
-                return;
-            }
-            dialogController.setClients(clients);
-
-            Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setDialogPane(pane);
-            dialog.setTitle("Create Profile");
-            dialog.showAndWait();
-
-            CreateProfileDialogController.CreateRequest req = dialogController.getCreateRequest();
-            if (req == null) return;
-            profileService.createProfile(
-                    req.profileName(), req.client(), req.duplicateDetectionEnabled(),
-                    req.profileRotation(), req.profileBrightness(), req.blackAndWhite());
-            onRefreshProfiles();
-        } catch (IOException | SQLException | IllegalArgumentException ex) {
-            showError("Could not create profile", ex.getMessage());
-        }
-    }
-
-    private void showProfileDetails(ScanningProfile profile) {
-        if (profile == null) {
-            profileDetailsLabel.setText("Select a profile to see details");
-            return;
-        }
-        StringBuilder b = new StringBuilder();
-        b.append("Name: ").append(profile.getProfileName()).append('\n');
-        b.append("Client: ").append(profile.getClientName()).append('\n');
-        b.append("Split rule: ").append(profile.getSplitRule() == null ? "(none)" : profile.getSplitRule()).append('\n');
-        b.append("Duplicate detection: ")
-                .append(profile.isDuplicateDetectionEnabled() ? "Enabled" : "Disabled");
-        profileDetailsLabel.setText(b.toString());
-    }
-
-
     // ---------------- Clients ----------------
 
     @FXML
     private void onRefreshClients() {
+        if (clientsList == null) return;
         try {
             List<Client> clients = profileService.getClients();
             clientsList.setItems(FXCollections.observableArrayList(clients));
