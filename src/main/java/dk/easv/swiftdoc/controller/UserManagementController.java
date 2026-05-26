@@ -176,29 +176,6 @@ public class UserManagementController {
     }
 
     @FXML
-    private void onDeleteClicked() {
-        User selected = usersTable.getSelectionModel().getSelectedItem();
-        if (selected == null) { showMessage("Select a user first.", false); return; }
-        if (isSelf(selected)) { showMessage("Cannot delete your own account.", true); return; }
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Permanently delete user '" + selected.getUsername() + "'?",
-                ButtonType.OK, ButtonType.CANCEL);
-        confirm.setHeaderText("Confirm delete");
-        confirm.showAndWait().ifPresent(bt -> {
-            if (bt != ButtonType.OK) return;
-            try {
-                authService.deleteUser(selected.getUserId());
-                clearForm();
-                loadUsers();
-                showMessage("User deleted.", false);
-            } catch (SQLException ex) {
-                showMessage("Could not delete user: " + ex.getMessage(), true);
-            }
-        });
-    }
-
-    @FXML
     private void onCancelClicked() {
         clearForm();
     }

@@ -9,10 +9,12 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -29,7 +31,9 @@ public class ProfileManagementController {
     @FXML private TableColumn<ScanningProfile, String>  colName;
     @FXML private TableColumn<ScanningProfile, String>  colClient;
     @FXML private TableColumn<ScanningProfile, Boolean> colDupDetect;
+    @FXML private TableColumn<ScanningProfile, String>  colStatus;
 
+    @FXML private Button   disableButton;
     @FXML private Label    formTitleLabel;
     @FXML private TextField nameField;
     @FXML private ComboBox<Client> clientCombo;
@@ -47,6 +51,27 @@ public class ProfileManagementController {
                 new SimpleStringProperty(c.getValue().getClientName()));
         colDupDetect.setCellValueFactory(c ->
                 new SimpleBooleanProperty(c.getValue().isDuplicateDetectionEnabled()).asObject());
+        if (colStatus != null) {
+            colStatus.setCellValueFactory(c ->
+                    new SimpleStringProperty(c.getValue().isActive() ? "Active" : "Disabled"));
+            colStatus.setCellFactory(col -> new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty ? null : item);
+                    setStyle("Active".equals(item)
+                            ? "-fx-text-fill: #16A34A; -fx-font-weight: 600;"
+                            : "-fx-text-fill: #DC2626; -fx-font-weight: 600;");
+                }
+            });
+        }
+        profilesTable.setRowFactory(tv -> new javafx.scene.control.TableRow<>() {
+            @Override
+            protected void updateItem(ScanningProfile profile, boolean empty) {
+                super.updateItem(profile, empty);
+                setOpacity(empty || profile == null || profile.isActive() ? 1.0 : 0.55);
+            }
+        });
 
         profilesTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, sel) -> onSelectionChanged(sel));
@@ -77,6 +102,9 @@ public class ProfileManagementController {
         nameField.setText(profile.getProfileName());
         dupDetectCheck.setSelected(profile.isDuplicateDetectionEnabled());
         messageLabel.setText("");
+        if (disableButton != null) {
+            disableButton.setText(profile.isActive() ? "Disable" : "Enable");
+        }
 
         if (clients != null) {
             clients.stream()
@@ -119,26 +147,27 @@ public class ProfileManagementController {
     }
 
     @FXML
-    private void onDeleteClicked() {
+    private void onDisableClicked() {
         ScanningProfile selected = profilesTable.getSelectionModel().getSelectedItem();
-        if (selected == null) { showMessage("Select a profile to delete.", true); return; }
+        if (selected == null) { showMessage("Select a profile first.", true); return; }
 
+        boolean newActive = !selected.isActive();
+        String verb = newActive ? "Enable" : "Disable";
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Profile");
-        confirm.setHeaderText("Delete '" + selected.getProfileName() + "'?");
-        confirm.setContentText("This cannot be undone. Profiles with existing boxes cannot be deleted.");
+        confirm.setTitle(verb + " profile");
+        confirm.setHeaderText(verb + " '" + selected.getProfileName() + "'?");
+        confirm.setContentText(newActive
+                ? "Users will be able to use this profile again."
+                : "The profile stays in the database but is hidden from users.");
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
 
         try {
-            profileService.deleteProfile(selected.getProfileId());
-            clearForm();
+            profileService.setProfileActive(selected.getProfileId(), newActive);
             refresh();
-            showMessage("Profile deleted.", false);
-        } catch (IllegalStateException ex) {
-            showMessage(ex.getMessage(), true);
+            showMessage("Profile " + (newActive ? "enabled." : "disabled."), false);
         } catch (SQLException ex) {
-            showError("Delete failed", ex.getMessage());
+            showError(verb + " failed", ex.getMessage());
         }
     }
 

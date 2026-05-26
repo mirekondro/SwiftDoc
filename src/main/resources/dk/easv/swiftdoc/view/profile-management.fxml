@@ -20,9 +20,10 @@
         <Label text="Scanning profiles" styleClass="section-title"/>
         <TableView fx:id="profilesTable" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="colName"      text="Profile Name"        prefWidth="200"/>
-                <TableColumn fx:id="colClient"    text="Client"              prefWidth="150"/>
-                <TableColumn fx:id="colDupDetect" text="Duplicate Detection" prefWidth="150"/>
+                <TableColumn fx:id="colName"      text="Profile Name"        prefWidth="180"/>
+                <TableColumn fx:id="colClient"    text="Client"              prefWidth="130"/>
+                <TableColumn fx:id="colDupDetect" text="Duplicate Detection" prefWidth="140"/>
+                <TableColumn fx:id="colStatus"    text="Status"              prefWidth="90"/>
             </columns>
         </TableView>
         <HBox spacing="8.0">
@@ -32,8 +33,8 @@
             <Button text="Edit" onAction="#onEditClicked" styleClass="btn">
                 <graphic><FontIcon iconLiteral="fas-pen"/></graphic>
             </Button>
-            <Button text="Delete" onAction="#onDeleteClicked" styleClass="btn btn-logout">
-                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+            <Button fx:id="disableButton" text="Disable" onAction="#onDisableClicked" styleClass="btn">
+                <graphic><FontIcon iconLiteral="fas-ban"/></graphic>
             </Button>
         </HBox>
     </VBox>

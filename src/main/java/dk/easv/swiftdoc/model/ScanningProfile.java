@@ -23,6 +23,7 @@ public class ScanningProfile {
     private int profileRotation;      // 0..359 degrees clockwise
     private int profileBrightness;    // -100..100, 0 = no change
     private boolean blackAndWhite;    // convert to 1-bit B&W
+    private boolean active = true;    // soft-delete flag (dbo.Profiles.IsActive)
 
     public ScanningProfile(int profileId, String profileName, String splitRule) {
         this(profileId, profileName, splitRule, 0, "Unknown", false, 0, 0, false);
@@ -125,6 +126,14 @@ public class ScanningProfile {
 
     public void setDuplicateDetectionEnabled(boolean duplicateDetectionEnabled) {
         this.duplicateDetectionEnabled = duplicateDetectionEnabled;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
     /** ComboBox renders items via toString(). */
