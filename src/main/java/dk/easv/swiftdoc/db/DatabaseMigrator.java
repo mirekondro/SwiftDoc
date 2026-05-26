@@ -24,6 +24,7 @@ public final class DatabaseMigrator {
             ensureUsersIsActive(connection);
             ensureUserProfileAccess(connection);
             ensureFileLogsTable(connection);
+            ensureProfileProcessingColumns(connection);
             migrated = true;
         }
     }
@@ -130,6 +131,19 @@ public final class DatabaseMigrator {
                             + "    CONSTRAINT DF_Documents_Status DEFAULT 'NEW' "
                             + "    WITH VALUES; "
                             + "END;");
+        }
+    }
+    private static void ensureProfileProcessingColumns(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Profiles', 'ProfileRotation') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Profiles ADD ProfileRotation INT NOT NULL DEFAULT 0; END;");
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Profiles', 'ProfileBrightness') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Profiles ADD ProfileBrightness INT NOT NULL DEFAULT 0; END;");
+            stmt.execute(
+                    "IF COL_LENGTH('dbo.Profiles', 'BlackAndWhite') IS NULL "
+                            + "BEGIN ALTER TABLE dbo.Profiles ADD BlackAndWhite BIT NOT NULL DEFAULT 0; END;");
         }
     }
 }

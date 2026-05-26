@@ -10,33 +10,23 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 
 import java.util.List;
 
-/**
- * Controller for the "Create Profile" dialog.
- *
- * Replaces the inline Java-built VBox dialog that used to live inside
- * NewScanDialogController. Same three fields (name, client, duplicate
- * detection) but as proper FXML so it inherits the app's styling and
- * dark theme.
- *
- * Caller flow:
- *  1. Load create-profile-dialog.fxml
- *  2. Get the controller, call setClients(...)
- *  3. dialog.showAndWait()
- *  4. Read getCreateRequest() — null means cancelled, otherwise contains
- *     the new profile's fields
- */
+
 public class CreateProfileDialogController {
 
     /**
-     * Result returned by the dialog. All fields are validated by the
-     * controller before this is constructed.
+     * Result returned by the dialog. All fields validated before construction.
      */
     public record CreateRequest(String profileName, Client client,
-                                boolean duplicateDetectionEnabled) {}
+                                boolean duplicateDetectionEnabled,
+                                int profileRotation, int profileBrightness,
+                                boolean blackAndWhite) {}
 
     private CreateRequest createRequest;
 
@@ -47,12 +37,28 @@ public class CreateProfileDialogController {
     @FXML private Label clientErrorLabel;
     @FXML private CheckBox duplicateDetectionCheckBox;
 
+    // Processing controls
+    @FXML private Spinner<Integer> rotationSpinner;
+    @FXML private Slider brightnessSlider;
+    @FXML private Label brightnessValueLabel;
+    @FXML private CheckBox blackAndWhiteCheckBox;
+
     @FXML private ButtonType createButtonType;
     @FXML private ButtonType cancelButtonType;
 
     @FXML
     private void initialize() {
-        // Validation listeners — clear errors and re-evaluate the Create button.
+        // Rotation spinner: accept -359..359 (negatives = counter-clockwise),
+        // normalized when read.
+        rotationSpinner.setValueFactory(
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(-359, 359, 0, 1));
+
+        // Brightness slider → live label.
+        brightnessValueLabel.setText("0");
+        brightnessSlider.valueProperty().addListener((obs, oldVal, newVal) ->
+                brightnessValueLabel.setText(Integer.toString(newVal.intValue())));
+
+        // Validation listeners.
         profileNameField.textProperty().addListener((obs, oldVal, newVal) -> {
             updateNameError();
             refreshCreateEnabled();
@@ -63,8 +69,6 @@ public class CreateProfileDialogController {
                     refreshCreateEnabled();
                 });
 
-        // Wire the Create button through an event filter so we can populate
-        // createRequest before the dialog closes.
         Button createBtn = (Button) dialogPane.lookupButton(createButtonType);
         createBtn.addEventFilter(ActionEvent.ACTION, this::onCreate);
 
@@ -73,10 +77,6 @@ public class CreateProfileDialogController {
         refreshCreateEnabled();
     }
 
-    /**
-     * Populate the client dropdown. Called by the parent dialog before
-     * showAndWait().
-     */
     public void setClients(List<Client> clients) {
         clientComboBox.setItems(FXCollections.observableArrayList(clients));
         if (clients.isEmpty()) {
@@ -86,8 +86,6 @@ public class CreateProfileDialogController {
     }
 
     private void onCreate(ActionEvent event) {
-        // Reset before validation — if anything fails we want the caller
-        // to see null (i.e. "the user didn't successfully create").
         createRequest = null;
 
         String name = profileNameField.getText();
@@ -103,10 +101,15 @@ public class CreateProfileDialogController {
             return;
         }
 
+        int rotation = normalizeRotation(
+                rotationSpinner.getValue() != null ? rotationSpinner.getValue() : 0);
+        int brightness = (int) Math.round(brightnessSlider.getValue());
+        boolean bw = blackAndWhiteCheckBox.isSelected();
+
         createRequest = new CreateRequest(
-                name.trim(),
-                client,
-                duplicateDetectionCheckBox.isSelected());
+                name.trim(), client,
+                duplicateDetectionCheckBox.isSelected(),
+                rotation, brightness, bw);
     }
 
     private void updateNameError() {
@@ -120,7 +123,6 @@ public class CreateProfileDialogController {
 
     private void updateClientError() {
         if (clientComboBox.getValue() == null) {
-            // Don't overwrite the "no clients available" message if it's set.
             if (clientComboBox.getItems().isEmpty()) {
                 return;
             }
@@ -139,10 +141,11 @@ public class CreateProfileDialogController {
         createBtn.setDisable(!(nameOk && clientOk));
     }
 
-    /**
-     * @return the validated fields if the user clicked Create successfully,
-     *         or null if cancelled or validation failed.
-     */
+    private static int normalizeRotation(int degrees) {
+        int mod = degrees % 360;
+        return mod < 0 ? mod + 360 : mod;
+    }
+
     public CreateRequest getCreateRequest() {
         return createRequest;
     }

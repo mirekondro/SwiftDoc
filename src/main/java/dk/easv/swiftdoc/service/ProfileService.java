@@ -38,14 +38,25 @@ public class ProfileService {
 
     public ScanningProfile createProfile(String profileName, Client client,
                                          boolean duplicateDetectionEnabled) throws SQLException {
+        return createProfile(profileName, client, duplicateDetectionEnabled, 0, 0, false);
+    }
+
+    public ScanningProfile createProfile(String profileName, Client client,
+                                         boolean duplicateDetectionEnabled,
+                                         int profileRotation, int profileBrightness,
+                                         boolean blackAndWhite) throws SQLException {
         if (client == null) {
             throw new IllegalArgumentException("Client is required.");
         }
         if (profileName == null || profileName.isBlank()) {
             throw new IllegalArgumentException("Profile name cannot be empty.");
         }
+        // Normalize rotation to 0..359 and clamp brightness to -100..100.
+        int rotation = ((profileRotation % 360) + 360) % 360;
+        int brightness = Math.max(-100, Math.min(100, profileBrightness));
+
         return profileDAO.create(profileName.trim(), client.getClientId(), null,
-                duplicateDetectionEnabled);
+                duplicateDetectionEnabled, rotation, brightness, blackAndWhite);
     }
 
     public void updateProfile(int profileId, String profileName, Client client,
