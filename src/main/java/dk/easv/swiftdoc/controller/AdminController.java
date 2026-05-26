@@ -10,7 +10,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -28,6 +27,11 @@ public class AdminController {
     @FXML private UserManagementController userManagementController;
 
     private User currentUser;
+    private Runnable onLogout;
+
+    public void setOnLogout(Runnable callback) {
+        this.onLogout = callback;
+    }
 
     @FXML
     private void initialize() {
@@ -139,10 +143,10 @@ public class AdminController {
     // ---------------- Session ----------------
 
     @FXML
-    private void onSignOut() {
-        Stage stage = (Stage) welcomeLabel.getScene().getWindow();
-        stage.close();
-        javafx.application.Platform.exit();
+    private void onLogoutCommand() {
+        if (onLogout != null) {
+            onLogout.run();
+        }
     }
 
     private void showError(String header, String content) {
