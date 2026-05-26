@@ -5,147 +5,163 @@
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
-<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.control.TreeView?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.SVGPath?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <VBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="dk.easv.swiftdoc.controller.MainController"
       fx:id="root"
       onKeyPressed="#onKeyPressed"
       focusTraversable="true"
-      spacing="0.0" prefWidth="1100.0" prefHeight="650.0"
+      spacing="0.0"
+      prefWidth="1180.0" prefHeight="740.0"
       styleClass="app-root">
 
+    <!-- Top menu bar -->
     <MenuBar styleClass="app-menubar">
         <Menu text="Export">
-            <MenuItem text="Export..." onAction="#onExportMenuCommand"/>
+            <MenuItem text="Export…" onAction="#onExportMenuCommand"/>
         </Menu>
     </MenuBar>
 
-    <HBox spacing="16.0" styleClass="app-header" alignment="CENTER_LEFT">
+    <!-- Header bar -->
+    <HBox spacing="12.0" styleClass="app-header" alignment="CENTER_LEFT">
+        <!-- Brand -->
         <HBox spacing="10.0" styleClass="app-brand" alignment="CENTER_LEFT">
-            <SVGPath content="M12 2l3 6 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1z" styleClass="brand-icon"/>
+            <FontIcon iconLiteral="fas-bolt" iconSize="22" styleClass="brand-icon"/>
             <VBox spacing="2.0">
                 <Label text="SwiftDoc" styleClass="app-title"/>
                 <Label text="Scan. Organize. Export." styleClass="app-subtitle"/>
             </VBox>
         </HBox>
-        <HBox spacing="10.0" styleClass="header-cards" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT">
-            <VBox spacing="4.0" styleClass="header-card header-card-session">
-                <Label text="Session" styleClass="header-card-title"/>
-                <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true" styleClass="header-card-value"/>
+
+        <!-- Right side stat cards + controls -->
+        <HBox spacing="8.0" styleClass="header-cards" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT">
+            <VBox spacing="2.0" styleClass="header-card header-card-session">
+                <Label text="SESSION" styleClass="header-card-title"/>
+                <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true"
+                       styleClass="header-card-value"/>
             </VBox>
-            <VBox spacing="4.0" styleClass="header-card">
-                <Label text="Files" styleClass="header-card-title"/>
-                <Label fx:id="counterLabel" text="Files scanned: 0" styleClass="header-card-value"/>
+            <VBox spacing="2.0" styleClass="header-card">
+                <Label text="FILES" styleClass="header-card-title"/>
+                <Label fx:id="counterLabel" text="0 scanned" styleClass="header-card-value"/>
             </VBox>
-            <ToggleButton fx:id="themeToggle" text="Dark" onAction="#onThemeToggle" styleClass="toggle"/>
-            <Button text="Log Out" onAction="#onLogoutCommand" styleClass="btn btn-logout"/>
+            <ToggleButton fx:id="themeToggle" text="Dark" onAction="#onThemeToggle"
+                          styleClass="toggle">
+                <tooltip><Tooltip text="Toggle dark/light theme"/></tooltip>
+            </ToggleButton>
+            <Button text="Log out" onAction="#onLogoutCommand" styleClass="btn btn-logout">
+                <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+            </Button>
         </HBox>
     </HBox>
 
+    <!-- Main body -->
     <HBox spacing="14.0" VBox.vgrow="ALWAYS" styleClass="app-body">
-        <!-- LEFT COLUMN: controls + status + shortcuts -->
-        <VBox alignment="TOP_CENTER" spacing="12.0" prefWidth="230.0" styleClass="panel panel-left">
-            <VBox spacing="8.0" styleClass="card">
-                <Button text="New (F1)" onAction="#onNewCommand" maxWidth="Infinity" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z" styleClass="icon"/>
-                    </graphic>
+
+        <!-- LEFT — actions + status -->
+        <VBox alignment="TOP_CENTER" spacing="10.0" prefWidth="220.0" styleClass="panel panel-left">
+
+            <!-- Action buttons -->
+            <VBox spacing="6.0" styleClass="card">
+                <Button text="New scan  F1" onAction="#onNewCommand"
+                        maxWidth="Infinity" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
                 </Button>
-                <Button text="Save (Ctrl+S)" onAction="#onSaveCommand" maxWidth="Infinity" styleClass="btn btn-accent">
-                    <graphic>
-                        <SVGPath content="M5 3h14a2 2 0 0 1 2 2v16H3V5a2 2 0 0 1 2-2zm2 2v4h10V5H7zm0 8v6h10v-6H7z" styleClass="icon"/>
-                    </graphic>
+                <Button text="Save  Ctrl+S" onAction="#onSaveCommand"
+                        maxWidth="Infinity" styleClass="btn btn-accent">
+                    <graphic><FontIcon iconLiteral="fas-save"/></graphic>
                 </Button>
-                <Button fx:id="scanButton" text="Scan (F2)" onAction="#onScanCommand"
+                <Button fx:id="scanButton" text="Scan  F2" onAction="#onScanCommand"
                         disable="true" maxWidth="Infinity" styleClass="btn btn-primary">
-                    <graphic>
-                        <SVGPath content="M3 7V3h4v2H5v2H3zm14-4h4v4h-2V5h-2V3zM3 21v-4h2v2h2v2H3zm16-2h2v-2h2v4h-4v-2zM6 11h12v2H6z" styleClass="icon"/>
-                    </graphic>
+                    <graphic><FontIcon iconLiteral="fas-camera"/></graphic>
                 </Button>
                 <Button fx:id="finishSessionButton" text="Finish session"
                         onAction="#onFinishSessionCommand"
                         visible="false" managed="false"
                         maxWidth="Infinity" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M9 16.17l-3.88-3.88a1 1 0 0 0-1.41 1.41l4.59 4.59a1 1 0 0 0 1.41 0l11-11a1 1 0 0 0-1.41-1.41z" styleClass="icon"/>
-                    </graphic>
+                    <graphic><FontIcon iconLiteral="fas-check"/></graphic>
                 </Button>
             </VBox>
 
+            <!-- Status -->
             <VBox spacing="6.0" styleClass="card">
                 <Label text="Status" styleClass="section-title"/>
-                <Label fx:id="lastResultLabel" text="" wrapText="true" styleClass="status-pill"/>
+                <Label fx:id="lastResultLabel" text="—" wrapText="true" styleClass="status-pill"/>
             </VBox>
 
+            <!-- Shortcuts -->
             <VBox spacing="6.0" styleClass="card">
-                <Button text="Shortcuts" onAction="#onShowShortcutsCommand" maxWidth="Infinity" styleClass="btn"/>
+                <Button text="Keyboard shortcuts" onAction="#onShowShortcutsCommand"
+                        maxWidth="Infinity" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-keyboard"/></graphic>
+                </Button>
             </VBox>
         </VBox>
 
-        <!-- MIDDLE COLUMN: sidebar tree -->
-        <VBox spacing="8.0" prefWidth="300.0" styleClass="panel panel-sidebar">
+        <!-- MIDDLE — sidebar tree -->
+        <VBox spacing="8.0" prefWidth="290.0" styleClass="panel panel-sidebar">
             <HBox alignment="CENTER_LEFT" spacing="6.0">
                 <Label text="All boxes" styleClass="section-title"/>
                 <Label text="History" styleClass="pill pill-info"/>
             </HBox>
 
-            <!-- Search field for filtering the tree -->
             <HBox spacing="6.0" alignment="CENTER_LEFT">
-                <TextField fx:id="sidebarSearchField" promptText="Search boxes, barcodes, files..."
+                <TextField fx:id="sidebarSearchField"
+                           promptText="Search boxes, barcodes, files…"
                            HBox.hgrow="ALWAYS"/>
-                <Button text="✕" onAction="#onClearSidebarSearch" styleClass="btn"/>
+                <Button onAction="#onClearSidebarSearch" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-times"/></graphic>
+                    <tooltip><Tooltip text="Clear search"/></tooltip>
+                </Button>
             </HBox>
 
-            <TreeView fx:id="sidebarTree" VBox.vgrow="ALWAYS" showRoot="false" styleClass="app-tree"/>
+            <TreeView fx:id="sidebarTree" VBox.vgrow="ALWAYS" showRoot="false"
+                      styleClass="app-tree"/>
         </VBox>
 
-        <!-- RIGHT COLUMN: viewer (caption + rotate toolbar + image) -->
+        <!-- RIGHT — image viewer -->
         <VBox spacing="10.0" HBox.hgrow="ALWAYS" styleClass="panel panel-viewer">
             <HBox alignment="CENTER_LEFT" spacing="8.0">
-                <Label fx:id="viewerCaptionLabel" text="No page to display yet" styleClass="viewer-title"/>
+                <Label fx:id="viewerCaptionLabel" text="No page to display yet"
+                       styleClass="viewer-title"/>
                 <Label text="Preview" styleClass="pill pill-accent"/>
             </HBox>
 
-            <!-- Rotate toolbar -->
-            <HBox spacing="8.0" styleClass="toolbar">
-                <Button text="Delete File" onAction="#onDeleteFileCommand" styleClass="btn btn-logout"/>
-                <Button text="Custom Rotation (Ctrl+T)" onAction="#onCustomRotationCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M12 2a10 10 0 1 1-7 17.07l1.42-1.42A8 8 0 1 0 4 12h3l-4 4-4-4h3a10 10 0 0 1 10-10zm-1 5h2v5h4v2h-6V7z" styleClass="icon"/>
-                    </graphic>
+            <!-- Toolbar -->
+            <HBox spacing="6.0" styleClass="toolbar">
+                <Button text="Delete" onAction="#onDeleteFileCommand" styleClass="btn btn-logout">
+                    <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+                    <tooltip><Tooltip text="Delete current file"/></tooltip>
                 </Button>
-                <Button text="Reset (Ctrl+0)" onAction="#onResetRotationCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M6 4h12v4H6V4zm0 6h12v10H6V10zm2 2v6h8v-6H8z" styleClass="icon"/>
-                    </graphic>
+                <Button text="Rotate  Ctrl+T" onAction="#onCustomRotationCommand" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-redo"/></graphic>
+                    <tooltip><Tooltip text="Custom rotation angle"/></tooltip>
                 </Button>
-                <Button text="Zoom in (Crtl++)" onAction="#onZoomInCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12zm-1 3h2v2h2v2h-2v2H9v-2H7V9h2V7zm6.32 9.9l4.28 4.28-1.42 1.42-4.28-4.28 1.42-1.42z" styleClass="icon"/>
-                    </graphic>
+                <Button text="Reset  Ctrl+0" onAction="#onResetRotationCommand" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-undo"/></graphic>
+                    <tooltip><Tooltip text="Reset rotation"/></tooltip>
                 </Button>
-                <Button text="Zoom out (Ctrl+-)" onAction="#onZoomOutCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M10 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm0 2a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM7 9h6v2H7V9zm8.32 7.9l4.28 4.28-1.42 1.42-4.28-4.28 1.42-1.42z" styleClass="icon"/>
-                    </graphic>
+                <Button text="Zoom in  Ctrl++" onAction="#onZoomInCommand" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-search-plus"/></graphic>
                 </Button>
-                <Button text="Reset zoom (Ctrl+1)" onAction="#onResetZoomCommand" styleClass="btn">
-                    <graphic>
-                        <SVGPath content="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" styleClass="icon"/>
-                    </graphic>
+                <Button text="Zoom out  Ctrl+-" onAction="#onZoomOutCommand" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-search-minus"/></graphic>
+                </Button>
+                <Button text="Fit  Ctrl+1" onAction="#onResetZoomCommand" styleClass="btn">
+                    <graphic><FontIcon iconLiteral="fas-expand"/></graphic>
+                    <tooltip><Tooltip text="Fit page to viewer"/></tooltip>
                 </Button>
             </HBox>
 
+            <!-- Image area -->
             <StackPane VBox.vgrow="ALWAYS" styleClass="viewer-surface">
                 <ImageView fx:id="pageImageView"
                            preserveRatio="true"
@@ -155,5 +171,6 @@
                            fitHeight="540.0"/>
             </StackPane>
         </VBox>
+
     </HBox>
 </VBox>

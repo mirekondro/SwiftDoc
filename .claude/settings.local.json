@@ -10,7 +10,9 @@
       "Bash(xargs basename -a)",
       "Bash(mvn javafx:run)",
       "Bash(grep -v \"^$\")",
-      "Bash(grep -v \"WARNING\\\\|Picked up\\\\|^$\")"
+      "Bash(grep -v \"WARNING\\\\|Picked up\\\\|^$\")",
+      "Bash(grep -E \"\\\\.\\(java|fxml|css\\)$\")",
+      "Bash(mvn -q -DskipTests compile)"
     ]
   }
 }

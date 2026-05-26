@@ -7,6 +7,9 @@ module dk.easv.swiftdoc {
     requires java.sql;
     requires com.google.zxing;
     requires com.google.zxing.javase;
+    requires org.kordamp.ikonli.core;
+    requires org.kordamp.ikonli.javafx;
+    requires org.kordamp.ikonli.fontawesome5;
 
     opens dk.easv.swiftdoc.app to javafx.graphics;
     opens dk.easv.swiftdoc.controller to javafx.fxml;

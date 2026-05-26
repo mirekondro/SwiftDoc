@@ -9,6 +9,7 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <HBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="dk.easv.swiftdoc.controller.ProfileManagementController"
@@ -25,9 +26,15 @@
             </columns>
         </TableView>
         <HBox spacing="8.0">
-            <Button text="Create"  onAction="#onCreateClicked"  styleClass="btn btn-primary"/>
-            <Button text="Edit"    onAction="#onEditClicked"    styleClass="btn"/>
-            <Button text="Delete"  onAction="#onDeleteClicked"  styleClass="btn btn-logout"/>
+            <Button text="Create" onAction="#onCreateClicked" styleClass="btn btn-primary">
+                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+            </Button>
+            <Button text="Edit" onAction="#onEditClicked" styleClass="btn">
+                <graphic><FontIcon iconLiteral="fas-pen"/></graphic>
+            </Button>
+            <Button text="Delete" onAction="#onDeleteClicked" styleClass="btn btn-logout">
+                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+            </Button>
         </HBox>
     </VBox>
 
@@ -44,7 +51,9 @@
         <CheckBox fx:id="dupDetectCheck" text="Enable duplicate detection"/>
 
         <HBox spacing="8.0">
-            <Button text="Save"   onAction="#onSaveClicked"   styleClass="btn btn-primary"/>
+            <Button text="Save" onAction="#onSaveClicked" styleClass="btn btn-primary">
+                <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+            </Button>
             <Button text="Cancel" onAction="#onCancelClicked" styleClass="btn"/>
         </HBox>
 
