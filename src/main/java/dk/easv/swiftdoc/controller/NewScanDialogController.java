@@ -123,7 +123,10 @@ public class NewScanDialogController {
                         profileService.createProfile(
                                 request.profileName(),
                                 request.client(),
-                                request.duplicateDetectionEnabled());
+                                request.duplicateDetectionEnabled(),
+                                request.profileRotation(),
+                                request.profileBrightness(),
+                                request.blackAndWhite());
                 loadProfiles();
                 profileComboBox.getSelectionModel().select(created);
             } catch (java.sql.SQLException | IllegalArgumentException ex) {

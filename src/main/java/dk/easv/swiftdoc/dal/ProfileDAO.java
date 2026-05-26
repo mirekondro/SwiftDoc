@@ -22,6 +22,7 @@ public class ProfileDAO {
 
     private static final String SELECT_ALL =
             "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
+                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, "
                     + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
@@ -29,6 +30,7 @@ public class ProfileDAO {
 
     private static final String SELECT_BY_ID =
             "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
+                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, "
                     + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
@@ -36,6 +38,7 @@ public class ProfileDAO {
 
     private static final String SELECT_FOR_USER =
             "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
+                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, "
                     + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
@@ -44,8 +47,38 @@ public class ProfileDAO {
                     + "ORDER BY c.ClientName, p.ProfileName";
 
     private static final String INSERT_PROFILE =
-            "INSERT INTO dbo.Profiles (ProfileName, ClientId, SplitRule, DuplicateDetectionEnabled) "
-                    + "VALUES (?, ?, ?, ?)";
+            "INSERT INTO dbo.Profiles "
+                    + "(ProfileName, ClientId, SplitRule, DuplicateDetectionEnabled, "
+                    + "ProfileRotation, ProfileBrightness, BlackAndWhite) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    public ScanningProfile create(String profileName, int clientId, String splitRule,
+                                  boolean duplicateDetectionEnabled,
+                                  int profileRotation, int profileBrightness,
+                                  boolean blackAndWhite) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(INSERT_PROFILE, Statement.RETURN_GENERATED_KEYS)) {
+
+            stmt.setString(1, profileName);
+            stmt.setInt(2, clientId);
+            stmt.setString(3, splitRule);
+            stmt.setBoolean(4, duplicateDetectionEnabled);
+            stmt.setInt(5, profileRotation);
+            stmt.setInt(6, profileBrightness);
+            stmt.setBoolean(7, blackAndWhite);
+
+            stmt.executeUpdate();
+
+            try (ResultSet keys = stmt.getGeneratedKeys()) {
+                if (keys.next()) {
+                    int profileId = keys.getInt(1);
+                    return new ScanningProfile(profileId, profileName, splitRule, clientId, null,
+                            duplicateDetectionEnabled, profileRotation, profileBrightness, blackAndWhite);
+                }
+            }
+        }
+        throw new SQLException("Failed to create profile (no key returned).");
+    }
 
     private static final String UPDATE_PROFILE =
             "UPDATE dbo.Profiles SET ProfileName = ?, ClientId = ?, DuplicateDetectionEnabled = ? "
@@ -151,7 +184,10 @@ public class ProfileDAO {
                 rs.getString("SplitRule"),
                 rs.getInt("ClientId"),
                 rs.getString("ClientName"),
-                rs.getBoolean("DuplicateDetectionEnabled")
+                rs.getBoolean("DuplicateDetectionEnabled"),
+                rs.getInt("ProfileRotation"),
+                rs.getInt("ProfileBrightness"),
+                rs.getBoolean("BlackAndWhite")
         );
     }
 }
