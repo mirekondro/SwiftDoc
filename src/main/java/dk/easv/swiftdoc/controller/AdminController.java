@@ -8,6 +8,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
 
 import java.sql.SQLException;
@@ -19,6 +21,7 @@ public class AdminController {
 
     @FXML private Label welcomeLabel;
     @FXML private ListView<Client> clientsList;
+    @FXML private ImageView brandLogo;
     @FXML private ProfileManagementController profileManagementController;
     @FXML private UserManagementController userManagementController;
     @FXML private LogsController logsController;
@@ -27,7 +30,28 @@ public class AdminController {
 
     @FXML
     private void initialize() {
+        loadBrandLogo();
         onRefreshClients();
+    }
+
+    private void loadBrandLogo() {
+        if (brandLogo == null) {
+            return;
+        }
+        Image image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/LogoBlue2H.png");
+        if (image == null) {
+            image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/WeblagerLightBLue.png");
+        }
+        brandLogo.setImage(image);
+    }
+
+    private Image loadLogoImage(String classpath) {
+        try {
+            var url = AdminController.class.getResource(classpath);
+            return url != null ? new Image(url.toExternalForm()) : null;
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     public void setCurrentUser(User user) {

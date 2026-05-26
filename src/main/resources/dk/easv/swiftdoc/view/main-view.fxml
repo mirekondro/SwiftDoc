@@ -34,12 +34,8 @@
     <!-- Header bar -->
     <HBox spacing="12.0" styleClass="app-header" alignment="CENTER_LEFT">
         <!-- Brand -->
-        <HBox spacing="10.0" styleClass="app-brand" alignment="CENTER_LEFT">
-            <FontIcon iconLiteral="fas-bolt" iconSize="22" styleClass="brand-icon"/>
-            <VBox spacing="2.0">
-                <Label text="SwiftDoc" styleClass="app-title"/>
-                <Label text="Scan. Organize. Export." styleClass="app-subtitle"/>
-            </VBox>
+        <HBox spacing="9.0" styleClass="app-brand" alignment="CENTER_LEFT">
+            <ImageView fx:id="brandLogo" styleClass="brand-logo" preserveRatio="true" fitHeight="30"/>
         </HBox>
 
         <!-- Right side stat cards + controls -->

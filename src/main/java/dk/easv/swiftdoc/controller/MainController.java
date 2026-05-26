@@ -90,6 +90,7 @@ public class MainController {
     @FXML private Label lastResultLabel;
     @FXML private Label viewerCaptionLabel;
     @FXML private ImageView pageImageView;
+    @FXML private ImageView brandLogo;
     @FXML private TreeView<SidebarNode> sidebarTree;
     @FXML private ToggleButton themeToggle;
 
@@ -124,6 +125,9 @@ public class MainController {
     private void initialize() {
         Platform.runLater(() -> root.requestFocus());
 
+        // Brand logo — default to light variant; theme toggle swaps to dark.
+        updateBrandLogo(false);
+
         // Sidebar tree setup — invisible root, populated below.
         sidebarTree.setRoot(new TreeItem<>(null));
         loadSidebarTreeAsync();
@@ -132,6 +136,26 @@ public class MainController {
 
         sidebarTree.getSelectionModel().selectedItemProperty()
                 .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
+    }
+
+    private void updateBrandLogo(boolean darkMode) {
+        if (brandLogo == null) {
+            return;
+        }
+        Image image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/LogoBlue2H.png");
+        if (image == null) {
+            image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/WeblagerLightBLue.png");
+        }
+        brandLogo.setImage(image);
+    }
+
+    private Image loadLogoImage(String classpath) {
+        try {
+            var url = MainController.class.getResource(classpath);
+            return url != null ? new Image(url.toExternalForm()) : null;
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     @FXML
@@ -1648,6 +1672,7 @@ public class MainController {
                 themeToggle.setText("Dark");
             }
         }
+        updateBrandLogo(darkMode);
     }
 
     private void applyDialogTheme(DialogPane dialogPane) {
