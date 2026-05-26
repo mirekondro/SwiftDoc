@@ -295,6 +295,12 @@ public class MainController {
     private void onKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
+        if (event.isShiftDown() && code == KeyCode.S) {
+            onShowShortcutsCommand();
+            event.consume();
+            return;
+        }
+
         if (code == KeyCode.F1) {
             onNewCommand();
             event.consume();

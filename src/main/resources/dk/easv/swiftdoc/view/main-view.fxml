@@ -95,7 +95,7 @@
 
             <!-- Shortcuts -->
             <VBox spacing="6.0" styleClass="card">
-                <Button text="Keyboard shortcuts" onAction="#onShowShortcutsCommand"
+                <Button text="Keyboard shortcuts (Shift+S)" onAction="#onShowShortcutsCommand"
                         maxWidth="Infinity" styleClass="btn">
                     <graphic><FontIcon iconLiteral="fas-keyboard"/></graphic>
                 </Button>
