@@ -7,6 +7,8 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
@@ -21,8 +23,33 @@ public class LoginController {
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private Label errorLabel;
+    @FXML private ImageView loginLogo;
 
     private User authenticatedUser;
+
+    @FXML
+    private void initialize() {
+        if (loginLogo == null) {
+            return;
+        }
+        Image image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/LogoBlue2V_Text.png");
+        if (image == null) {
+            image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/LogoBlue2V.png");
+        }
+        if (image == null) {
+            image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/WeblagerLightBLue.png");
+        }
+        loginLogo.setImage(image);
+    }
+
+    private Image loadLogoImage(String classpath) {
+        try {
+            var url = LoginController.class.getResource(classpath);
+            return url != null ? new Image(url.toExternalForm()) : null;
+        } catch (Exception ex) {
+            return null;
+        }
+    }
 
     @FXML
     private void onLogin() {

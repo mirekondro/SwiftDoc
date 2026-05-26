@@ -36,9 +36,6 @@
             <Button fx:id="deactivateButton" text="Deactivate" onAction="#onDeactivateClicked" styleClass="btn">
                 <graphic><FontIcon iconLiteral="fas-user-slash"/></graphic>
             </Button>
-            <Button text="Delete" onAction="#onDeleteClicked" styleClass="btn btn-logout">
-                <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
-            </Button>
         </HBox>
     </VBox>
 

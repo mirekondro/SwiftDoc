@@ -82,4 +82,8 @@ public class ProfileService {
         profileDAO.delete(profileId);
     }
 
+    public void setProfileActive(int profileId, boolean active) throws SQLException {
+        profileDAO.setActive(profileId, active);
+    }
+
 }

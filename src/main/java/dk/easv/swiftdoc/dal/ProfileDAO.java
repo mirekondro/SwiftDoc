@@ -22,7 +22,7 @@ public class ProfileDAO {
 
     private static final String SELECT_ALL =
             "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
-                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, "
+                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, p.IsActive, "
                     + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
@@ -30,7 +30,7 @@ public class ProfileDAO {
 
     private static final String SELECT_BY_ID =
             "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
-                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, "
+                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, p.IsActive, "
                     + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
@@ -38,12 +38,12 @@ public class ProfileDAO {
 
     private static final String SELECT_FOR_USER =
             "SELECT p.ProfileId, p.ProfileName, p.SplitRule, p.DuplicateDetectionEnabled, "
-                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, "
+                    + "p.ProfileRotation, p.ProfileBrightness, p.BlackAndWhite, p.IsActive, "
                     + "c.ClientId, c.ClientName "
                     + "FROM dbo.Profiles p "
                     + "INNER JOIN dbo.Clients c ON p.ClientId = c.ClientId "
                     + "INNER JOIN dbo.UserProfileAccess upa ON upa.ProfileId = p.ProfileId "
-                    + "WHERE upa.UserId = ? "
+                    + "WHERE upa.UserId = ? AND p.IsActive = 1 "
                     + "ORDER BY c.ClientName, p.ProfileName";
 
     private static final String INSERT_PROFILE =
@@ -87,6 +87,9 @@ public class ProfileDAO {
 
     private static final String DELETE_PROFILE =
             "DELETE FROM dbo.Profiles WHERE ProfileId = ?";
+
+    private static final String SET_ACTIVE =
+            "UPDATE dbo.Profiles SET IsActive = ? WHERE ProfileId = ?";
 
     public List<ScanningProfile> getAll() throws SQLException {
         List<ScanningProfile> profiles = new ArrayList<>();
@@ -157,8 +160,17 @@ public class ProfileDAO {
         }
     }
 
+    public void setActive(int profileId, boolean active) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SET_ACTIVE)) {
+            stmt.setBoolean(1, active);
+            stmt.setInt(2, profileId);
+            stmt.executeUpdate();
+        }
+    }
+
     private ScanningProfile mapRow(ResultSet rs) throws SQLException {
-        return new ScanningProfile(
+        ScanningProfile profile = new ScanningProfile(
                 rs.getInt("ProfileId"),
                 rs.getString("ProfileName"),
                 rs.getString("SplitRule"),
@@ -169,5 +181,7 @@ public class ProfileDAO {
                 rs.getInt("ProfileBrightness"),
                 rs.getBoolean("BlackAndWhite")
         );
+        profile.setActive(rs.getBoolean("IsActive"));
+        return profile;
     }
 }
