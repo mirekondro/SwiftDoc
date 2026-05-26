@@ -61,6 +61,23 @@ public class AdminController {
         }
     }
 
+    @FXML
+    private void onCreateClient() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Create Client");
+        dialog.setHeaderText("Add a new client");
+        dialog.setContentText("Client name:");
+
+        dialog.showAndWait().ifPresent(name -> {
+            try {
+                profileService.createClient(name);
+                onRefreshClients();
+            } catch (IllegalArgumentException | SQLException ex) {
+                showError("Could not create client", ex.getMessage());
+            }
+        });
+    }
+
     // ---------------- Session ----------------
 
     @FXML

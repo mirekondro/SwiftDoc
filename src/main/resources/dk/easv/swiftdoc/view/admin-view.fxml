@@ -47,14 +47,17 @@
                     <Label text="Clients" styleClass="section-title"/>
                     <ListView fx:id="clientsList" VBox.vgrow="ALWAYS"/>
                     <HBox spacing="8.0">
+                        <Button text="Create client" onAction="#onCreateClient" styleClass="btn btn-primary">
+                            <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+                        </Button>
                         <Button text="Refresh" onAction="#onRefreshClients" styleClass="btn">
                             <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
                         </Button>
                     </HBox>
                 </VBox>
                 <VBox spacing="8.0" HBox.hgrow="ALWAYS" styleClass="panel">
-                    <Label text="Note" styleClass="section-title"/>
-                    <Label text="Clients are managed externally. To add a new client, INSERT into dbo.Clients."
+                    <Label text="About clients" styleClass="section-title"/>
+                    <Label text="Clients group scanning profiles. Click &quot;Create client&quot; to add one, then assign it when creating a profile."
                            wrapText="true" styleClass="status-pill"/>
                 </VBox>
             </HBox>

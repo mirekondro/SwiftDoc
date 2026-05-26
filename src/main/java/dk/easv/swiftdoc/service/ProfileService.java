@@ -32,6 +32,17 @@ public class ProfileService {
         return clientDAO.getAll();
     }
 
+    public Client createClient(String clientName) throws SQLException {
+        if (clientName == null || clientName.isBlank()) {
+            throw new IllegalArgumentException("Client name cannot be empty.");
+        }
+        String trimmed = clientName.trim();
+        if (clientDAO.existsByName(trimmed)) {
+            throw new IllegalArgumentException("A client with that name already exists.");
+        }
+        return clientDAO.create(trimmed);
+    }
+
     public List<ScanningProfile> getProfiles() throws SQLException {
         return profileDAO.getAll();
     }
