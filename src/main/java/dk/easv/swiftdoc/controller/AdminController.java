@@ -20,6 +20,8 @@ public class AdminController {
     @FXML private UserManagementController userManagementController;
 
     private User currentUser;
+    private Runnable onLogout;
+
 
     @FXML
     private void initialize() {
@@ -42,6 +44,10 @@ public class AdminController {
         }
     }
 
+    public void setOnLogout(Runnable onLogout) {
+        this.onLogout = onLogout;
+    }
+
     // ---------------- Clients ----------------
 
     @FXML
@@ -58,10 +64,12 @@ public class AdminController {
     // ---------------- Session ----------------
 
     @FXML
-    private void onSignOut() {
+    private void onLogoutCommand() {
         Stage stage = (Stage) welcomeLabel.getScene().getWindow();
         stage.close();
-        javafx.application.Platform.exit();
+        if (onLogout != null) {
+            onLogout.run();
+        }
     }
 
     private void showError(String header, String content) {

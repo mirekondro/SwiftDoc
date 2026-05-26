@@ -34,6 +34,8 @@ public class ProfileManagementController {
     @FXML private Label    brightnessValueLabel;
     @FXML private CheckBox blackAndWhiteCheck;
     @FXML private Label    messageLabel;
+    @FXML private Button disableButton;
+    @FXML private TableColumn<ScanningProfile, String> colStatus;
 
     private ScanningProfile editingProfile;
     private List<Client> clients;
@@ -46,6 +48,8 @@ public class ProfileManagementController {
                 new SimpleStringProperty(c.getValue().getClientName()));
         colDupDetect.setCellValueFactory(c ->
                 new SimpleBooleanProperty(c.getValue().isDuplicateDetectionEnabled()).asObject());
+        colStatus.setCellValueFactory(c ->
+                new SimpleStringProperty("Active"));
 
         profilesTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, sel) -> onSelectionChanged(sel));
@@ -147,6 +151,12 @@ public class ProfileManagementController {
         } catch (SQLException ex) {
             showError("Delete failed", ex.getMessage());
         }
+    }
+    @FXML
+    private void onDisableClicked() {
+        ScanningProfile selected = profilesTable.getSelectionModel().getSelectedItem();
+        if (selected == null) { showMessage("Select a profile first.", true); return; }
+        showMessage("Disable/enable for profiles is not implemented yet.", true);
     }
 
     @FXML
