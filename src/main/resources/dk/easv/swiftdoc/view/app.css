@@ -33,9 +33,9 @@
 }
 
 .sidebar-section-title {
-    -fx-text-fill: #FFFFFF !important;
+    -fx-text-fill: #FFFFFF;
     -fx-font-size: 14px; /* Bigger header text */
-    -fx-font-weight: 900; 
+    -fx-font-weight: 900;
     -fx-padding: 24 16 12 16;
     -fx-text-transform: uppercase;
     -fx-letter-spacing: 1px;
@@ -44,6 +44,11 @@
 /* Global Text Padding/Margin */
 .label {
     -fx-padding: 2 4; /* Global breathing room for text */
+}
+
+/* Force dark text for all labels inside content areas */
+.workspace-body .label {
+    -fx-text-fill: #0F172A;
 }
 
 /* Sidebar Tree & Custom Graphics */
