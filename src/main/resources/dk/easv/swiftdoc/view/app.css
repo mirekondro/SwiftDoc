@@ -357,3 +357,13 @@
 .workspace-scroll .viewport {
     -fx-background-color: transparent;
 }
+
+/* Inner viewer scroll pane */
+.viewer-scroll {
+    -fx-background-color: transparent;
+    -fx-background: #F8FAFC;
+    -fx-padding: 0;
+}
+.viewer-scroll .viewport {
+    -fx-background-color: transparent;
+}

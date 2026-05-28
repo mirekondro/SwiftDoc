@@ -53,7 +53,14 @@ public class SidebarService {
      * volumes; could be replaced with a single JOIN query later if needed.
      */
     public List<BoxBranch> loadTree() throws SQLException {
-        List<Box> boxes = boxDAO.getAll();
+        return buildBranches(boxDAO.getAll());
+    }
+
+    public List<BoxBranch> loadTreeForUser(int userId) throws SQLException {
+        return buildBranches(boxDAO.getForUser(userId));
+    }
+
+    private List<BoxBranch> buildBranches(List<Box> boxes) throws SQLException {
         List<BoxBranch> branches = new ArrayList<>(boxes.size());
 
         for (Box box : boxes) {

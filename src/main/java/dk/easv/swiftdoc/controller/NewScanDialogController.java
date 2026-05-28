@@ -52,7 +52,6 @@ public class NewScanDialogController {
 
     @FXML private ButtonType startScanButtonType;
     @FXML private ButtonType cancelButtonType;
-    @FXML private ButtonType previewButtonType;
 
     @FXML
     private void initialize() {
@@ -175,15 +174,7 @@ public class NewScanDialogController {
 
     private void wireButtons() {
         Button startBtn = (Button) dialogPane.lookupButton(startScanButtonType);
-        Button previewBtn = (Button) dialogPane.lookupButton(previewButtonType);
-
         startBtn.addEventFilter(ActionEvent.ACTION, this::onStartScan);
-
-        previewBtn.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-            onPreview();
-        });
-
         duplicateDetectionCheckBox.setDisable(true);
         refreshStartEnabled();
     }

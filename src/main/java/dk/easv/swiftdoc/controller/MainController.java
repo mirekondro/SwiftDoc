@@ -42,6 +42,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -64,6 +65,7 @@ public class MainController {
 
     public void setCurrentUser(User user) {
         this.currentUser = user;
+        loadSidebarTreeAsync();
     }
 
     public void setOnLogout(Runnable callback) {
@@ -94,6 +96,8 @@ public class MainController {
     @FXML private ImageView pageImageView;
     @FXML private ImageView brandLogo;
     @FXML private TreeView<SidebarNode> sidebarTree;
+    @FXML private ScrollPane viewerScrollPane;
+    @FXML private StackPane viewerStack;
 
     /**
      * Wrapper for tree node values. Each node holds either a Box, a Document,
@@ -126,16 +130,14 @@ public class MainController {
     private void initialize() {
         Platform.runLater(() -> root.requestFocus());
 
-        // Responsive ImageView
-        pageImageView.fitWidthProperty().bind(((StackPane)pageImageView.getParent()).widthProperty());
-        pageImageView.fitHeightProperty().bind(((StackPane)pageImageView.getParent()).heightProperty());
+        // Re-fit image whenever the viewer viewport is resized
+        viewerScrollPane.viewportBoundsProperty().addListener((obs, o, n) -> updateViewerLayout());
 
         // Brand logo
         updateBrandLogo();
 
-        // Sidebar tree setup — invisible root, populated below.
+        // Sidebar tree setup — invisible root, data loaded after setCurrentUser.
         sidebarTree.setRoot(new TreeItem<>(null));
-        loadSidebarTreeAsync();
         configureSidebarDragAndDrop();
         sidebarSearchField.textProperty().addListener((obs, oldVal, newVal) -> filterTree(newVal));
 
@@ -189,6 +191,7 @@ public class MainController {
             });
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(pane);
             dialog.setTitle("Custom Rotation");
             dialog.showAndWait();
@@ -284,16 +287,36 @@ public class MainController {
     }
 
     private void applyZoom(double newZoom) {
-        double clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
-        zoomFactor = clamped;
-        pageImageView.setScaleX(clamped);
-        pageImageView.setScaleY(clamped);
+        zoomFactor = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+        updateViewerLayout();
     }
 
     private void resetZoom() {
         zoomFactor = 1.0;
-        pageImageView.setScaleX(1.0);
-        pageImageView.setScaleY(1.0);
+        updateViewerLayout();
+    }
+
+    private void updateViewerLayout() {
+        if (pageImageView.getImage() == null) return;
+        javafx.geometry.Bounds vp = viewerScrollPane.getViewportBounds();
+        double vw = vp.getWidth();
+        double vh = vp.getHeight();
+        if (vw <= 0 || vh <= 0) return;
+
+        double imgW = pageImageView.getImage().getWidth();
+        double imgH = pageImageView.getImage().getHeight();
+        double baseScale = Math.min(vw / imgW, vh / imgH);
+        double fitW = imgW * baseScale * zoomFactor;
+        double fitH = imgH * baseScale * zoomFactor;
+
+        pageImageView.setFitWidth(fitW);
+        pageImageView.setFitHeight(fitH);
+
+        // Keep StackPane large enough to center image when smaller than viewport
+        double stackW = Math.max(vw, fitW);
+        double stackH = Math.max(vh, fitH);
+        viewerStack.setMinSize(stackW, stackH);
+        viewerStack.setPrefSize(stackW, stackH);
     }
 
     @FXML
@@ -385,7 +408,7 @@ public class MainController {
      */
     private void loadSidebarTree() {
         try {
-            List<BoxBranch> branches = sidebarService.loadTree();
+            List<BoxBranch> branches = sidebarService.loadTreeForUser(currentUser.getUserId());
             applySidebarTree(branches);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -401,7 +424,7 @@ public class MainController {
         }
         Thread worker = new Thread(() -> {
             try {
-                List<BoxBranch> branches = sidebarService.loadTree();
+                List<BoxBranch> branches = sidebarService.loadTreeForUser(currentUser.getUserId());
                 Platform.runLater(() -> applySidebarTree(branches));
             } catch (SQLException ex) {
                 ex.printStackTrace();
@@ -1132,6 +1155,7 @@ public class MainController {
             dialogController.setCurrentUser(currentUser);
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(dialogPane);
             dialog.setTitle("New Scan");
             dialog.showAndWait();
@@ -1143,7 +1167,7 @@ public class MainController {
             } else {
                 System.out.println("New Scan cancelled — no session started.");
             }
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             System.err.println("Failed to load new scan dialog: " + ex.getMessage());
             ex.printStackTrace();
         }
@@ -1472,6 +1496,7 @@ public class MainController {
             applyDialogTheme(pane);
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(pane);
             dialog.setTitle("Keyboard Shortcuts");
             dialog.showAndWait();
@@ -1496,6 +1521,7 @@ public class MainController {
             ExportDialogController dialogController = loader.getController();
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(dialogPane);
             dialog.setTitle("Export");
             dialog.showAndWait();
