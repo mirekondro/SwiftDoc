@@ -1117,6 +1117,37 @@ public class MainController {
         }
     }
 
+    /**
+     * Update an existing document node when the first barcode rewrites a
+     * placeholder document: refresh the SidebarNode (new barcode value) and
+     * append the barcode file as the next child.
+     */
+    private void rewriteDocumentNode(TreeItem<SidebarNode> docItem, Document updatedDoc, File barcodeFile) {
+        docItem.setValue(SidebarNode.forDocument(updatedDoc));
+
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() == updatedDoc.getBoxId()) {
+                for (int i = 0; i < boxBranch.documents().size(); i++) {
+                    DocumentBranch db = boxBranch.documents().get(i);
+                    if (db.document().getDocumentId() == updatedDoc.getDocumentId()) {
+                        List<File> files = new ArrayList<>(db.files());
+                        if (barcodeFile != null) {
+                            files.add(barcodeFile);
+                        }
+                        boxBranch.documents().set(i, new DocumentBranch(updatedDoc, files));
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (barcodeFile != null) {
+            docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(barcodeFile)));
+        }
+        docItem.setExpanded(true);
+    }
+
     private TreeItem<SidebarNode> findBoxItem(int boxId) {
         for (TreeItem<SidebarNode> boxItem : sidebarTree.getRoot().getChildren()) {
             SidebarNode value = boxItem.getValue();
@@ -1307,8 +1338,8 @@ public class MainController {
 
                 case DOCUMENT_SPLIT -> {
                     lastResultLabel.setText("Barcode \"" + r.barcodeValue()
-                            + "\" detected — new Document #"
-                            + r.newDocument().getDocumentNumber() + " started");
+                            + "\" detected — Document #"
+                            + r.newDocument().getDocumentNumber() + " (" + r.barcodeValue() + ")");
                     System.out.println("SPLIT: barcode " + r.barcodeValue()
                             + " → Document id " + r.newDocument().getDocumentId());
 
@@ -1318,7 +1349,16 @@ public class MainController {
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );
-                    addDocumentToSidebar(r.newDocument(), r.savedFile());
+
+                    // If the document already exists in the sidebar (placeholder being
+                    // rewritten by the first barcode), refresh its label and append the
+                    // barcode file. Otherwise add the new document node.
+                    TreeItem<SidebarNode> existing = findDocumentItem(r.newDocument().getDocumentId());
+                    if (existing != null) {
+                        rewriteDocumentNode(existing, r.newDocument(), r.savedFile());
+                    } else {
+                        addDocumentToSidebar(r.newDocument(), r.savedFile());
+                    }
                 }
             }
         }

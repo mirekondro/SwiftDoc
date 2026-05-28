@@ -32,6 +32,9 @@ public class DocumentDAO {
     private static final String UPDATE_STATUS =
             "UPDATE dbo.Documents SET DocumentStatus = ? WHERE DocumentId = ?";
 
+    private static final String UPDATE_BARCODE =
+            "UPDATE dbo.Documents SET BarcodeValue = ? WHERE DocumentId = ?";
+
     public Document create(int boxId, String barcodeValue) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection()) {
 
@@ -92,6 +95,19 @@ public class DocumentDAO {
             }
         }
         return documents;
+    }
+
+    public void updateBarcodeValue(int documentId, String barcodeValue) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_BARCODE)) {
+            if (barcodeValue == null || barcodeValue.isBlank()) {
+                stmt.setNull(1, Types.NVARCHAR);
+            } else {
+                stmt.setString(1, barcodeValue);
+            }
+            stmt.setInt(2, documentId);
+            stmt.executeUpdate();
+        }
     }
 
     public void updateStatus(int documentId, Document.Status status) throws SQLException {
