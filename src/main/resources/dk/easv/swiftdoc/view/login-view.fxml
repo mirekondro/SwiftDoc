@@ -7,43 +7,44 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <StackPane xmlns:fx="http://javafx.com/fxml"
            fx:controller="dk.easv.swiftdoc.controller.LoginController"
            onKeyPressed="#onKeyPressed"
-           prefWidth="460.0" prefHeight="600.0"
+           prefWidth="1280.0" prefHeight="800.0"
            styleClass="login-root">
 
-    <VBox spacing="0.0" maxWidth="380.0" alignment="TOP_CENTER"
+    <VBox spacing="32.0" maxWidth="480.0" alignment="CENTER"
           styleClass="login-card" StackPane.alignment="CENTER">
 
-        <!-- Header: WebLager logo + subtitle -->
-        <VBox spacing="14.0" alignment="CENTER" styleClass="login-header">
-            <ImageView fx:id="loginLogo" styleClass="login-logo" preserveRatio="true" fitHeight="120"/>
-            <VBox spacing="4.0" alignment="CENTER">
-                <Label text="Welcome back" styleClass="login-title"/>
-                <Label text="Sign in to continue" styleClass="login-subtitle"/>
+        <!-- Header: Logo + Title -->
+        <VBox spacing="16.0" alignment="CENTER">
+            <ImageView fx:id="loginLogo" preserveRatio="true" fitHeight="80"/>
+            <VBox spacing="8.0" alignment="CENTER">
+                <Label text="SwiftDoc" styleClass="login-title" style="-fx-font-size: 32px; -fx-font-weight: 800;"/>
+                <Label text="Sign in to your dashboard" style="-fx-text-fill: #64748B; -fx-font-size: 16px;"/>
             </VBox>
         </VBox>
 
         <!-- Form -->
-        <VBox spacing="14.0" styleClass="login-form">
-            <VBox spacing="6.0">
-                <Label text="Username" styleClass="login-label"/>
+        <VBox spacing="24.0">
+            <VBox spacing="8.0">
+                <Label text="Username" style="-fx-font-weight: 700; -fx-text-fill: #0F172A;"/>
                 <TextField fx:id="usernameField" promptText="Enter your username"/>
             </VBox>
-            <VBox spacing="6.0">
-                <Label text="Password" styleClass="login-label"/>
+            <VBox spacing="8.0">
+                <Label text="Password" style="-fx-font-weight: 700; -fx-text-fill: #0F172A;"/>
                 <PasswordField fx:id="passwordField" promptText="Enter your password"/>
             </VBox>
-            <Label fx:id="errorLabel" text="" wrapText="true" styleClass="login-error"/>
+            <Label fx:id="errorLabel" text="" wrapText="true" styleClass="text-error"/>
         </VBox>
 
-        <!-- Actions: primary full-width + text-link cancel -->
-        <VBox spacing="4.0" alignment="CENTER" styleClass="login-actions">
-            <Button text="Sign in" onAction="#onLogin" defaultButton="true"
-                    maxWidth="Infinity" styleClass="btn btn-primary login-primary"/>
-            <Button text="Cancel" onAction="#onCancel" styleClass="btn-link"/>
+        <!-- Actions -->
+        <VBox spacing="12.0" alignment="CENTER">
+            <Button fx:id="loginButton" text="Sign in to SwiftDoc" onAction="#onLogin" defaultButton="true"
+                    maxWidth="Infinity" styleClass="btn btn-primary"/>
+            <Button text="Cancel" onAction="#onCancel" styleClass="btn" style="-fx-background-color: transparent;"/>
         </VBox>
 
     </VBox>

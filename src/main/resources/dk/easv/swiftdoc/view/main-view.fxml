@@ -2,9 +2,8 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Menu?>
-<?import javafx.scene.control.MenuBar?>
-<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.Tooltip?>
@@ -15,158 +14,130 @@
 <?import javafx.scene.layout.VBox?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
-<VBox xmlns:fx="http://javafx.com/fxml"
+<HBox xmlns:fx="http://javafx.com/fxml"
       fx:controller="dk.easv.swiftdoc.controller.MainController"
       fx:id="root"
       onKeyPressed="#onKeyPressed"
       focusTraversable="true"
-      spacing="0.0"
-      prefWidth="1180.0" prefHeight="740.0"
+      prefWidth="1280.0" prefHeight="800.0"
       styleClass="app-root">
 
-    <!-- Top menu bar -->
-    <MenuBar styleClass="app-menubar">
-        <Menu text="Export">
-            <MenuItem text="Export…" onAction="#onExportMenuCommand"/>
-        </Menu>
-    </MenuBar>
+    <!-- GLOBAL SIDEBAR -->
+    <VBox styleClass="app-sidebar" minWidth="350.0" maxWidth="350.0">
+        <!-- Logo -->
+        <VBox styleClass="sidebar-logo-container">
+            <ImageView fx:id="brandLogo" preserveRatio="true" fitHeight="40"/>
+        </VBox>
 
-    <!-- Header bar -->
-    <HBox spacing="12.0" styleClass="app-header" alignment="CENTER_LEFT">
-        <!-- Brand -->
-        <HBox spacing="9.0" styleClass="app-brand" alignment="CENTER_LEFT">
-            <ImageView fx:id="brandLogo" styleClass="brand-logo" preserveRatio="true" fitHeight="30"/>
-        </HBox>
-
-        <!-- Right side stat cards + controls -->
-        <HBox spacing="8.0" styleClass="header-cards" HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT">
-            <VBox spacing="2.0" styleClass="header-card header-card-session">
-                <Label text="SESSION" styleClass="header-card-title"/>
-                <Label fx:id="sessionInfoLabel" text="No active session" wrapText="true"
-                       styleClass="header-card-value"/>
-            </VBox>
-            <VBox spacing="2.0" styleClass="header-card">
-                <Label text="FILES" styleClass="header-card-title"/>
-                <Label fx:id="counterLabel" text="0 scanned" styleClass="header-card-value"/>
-            </VBox>
-            <ToggleButton fx:id="themeToggle" text="Dark" onAction="#onThemeToggle"
-                          styleClass="toggle">
-                <tooltip><Tooltip text="Toggle dark/light theme"/></tooltip>
-            </ToggleButton>
-            <Button text="Log out" onAction="#onLogoutCommand" styleClass="btn btn-logout">
-                <graphic><FontIcon iconLiteral="fas-sign-out-alt"/></graphic>
+        <!-- Primary Actions -->
+        <VBox spacing="12.0" styleClass="sidebar-nav-container">
+            <Label text="Workspace" styleClass="sidebar-section-title"/>
+            <Button text="New scan" onAction="#onNewCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
             </Button>
+            <Button fx:id="scanButton" text="Scan page" onAction="#onScanCommand" disable="true" maxWidth="Infinity" styleClass="btn btn-primary">
+                <graphic><FontIcon iconLiteral="fas-camera" iconSize="14"/></graphic>
+            </Button>
+            <Button text="Export scans" onAction="#onSaveCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-file-export" iconSize="14"/></graphic>
+            </Button>
+            <Button fx:id="finishSessionButton" text="Finish session" onAction="#onFinishSessionCommand" visible="false" managed="false" maxWidth="Infinity" styleClass="btn btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-check" iconSize="14"/></graphic>
+            </Button>
+        </VBox>
+
+        <!-- Navigation Tree -->
+        <VBox VBox.vgrow="ALWAYS" spacing="12.0" styleClass="sidebar-nav-container">
+            <Label text="Boxes &amp; History" styleClass="sidebar-section-title"/>
+            <TreeView fx:id="sidebarTree" VBox.vgrow="ALWAYS" showRoot="false" styleClass="app-tree"/>
+        </VBox>
+
+        <!-- Bottom Actions -->
+        <VBox spacing="8.0" styleClass="sidebar-nav-container">
+            <Button text="Keyboard shortcuts" onAction="#onShowShortcutsCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-keyboard" iconSize="14"/></graphic>
+            </Button>
+            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn btn-danger">
+                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="14"/></graphic>
+            </Button>
+        </VBox>
+    </VBox>
+
+    <!-- MAIN WORKSPACE -->
+    <VBox HBox.hgrow="ALWAYS" styleClass="app-workspace" minWidth="0.0">
+        
+        <!-- Top Bar -->
+        <HBox alignment="CENTER_LEFT" styleClass="workspace-top-bar">
+            <!-- Search -->
+            <HBox alignment="CENTER_LEFT" spacing="12.0" HBox.hgrow="ALWAYS">
+                <FontIcon iconLiteral="fas-search" iconSize="16" iconColor="#64748B"/>
+                <TextField fx:id="sidebarSearchField" promptText="Search boxes, barcodes, files..." HBox.hgrow="ALWAYS" maxWidth="400"/>
+                <Button onAction="#onClearSidebarSearch" styleClass="btn" style="-fx-padding: 8;">
+                    <graphic><FontIcon iconLiteral="fas-times" iconSize="12"/></graphic>
+                </Button>
+            </HBox>
+
+            <!-- Stats & Theme -->
+            <HBox spacing="16.0" alignment="CENTER_RIGHT">
+                <VBox styleClass="stat-card">
+                    <Label text="Active Session" styleClass="stat-label"/>
+                    <Label fx:id="sessionInfoLabel" text="No active session" styleClass="stat-value"/>
+                </VBox>
+                <VBox styleClass="stat-card">
+                    <Label text="Scanned" styleClass="stat-label"/>
+                    <Label fx:id="counterLabel" text="0 pages" styleClass="stat-value"/>
+                </VBox>
+            </HBox>
         </HBox>
-    </HBox>
 
-    <!-- Main body -->
-    <HBox spacing="14.0" VBox.vgrow="ALWAYS" styleClass="app-body">
+        <!-- Body Scroll Container -->
+        <ScrollPane VBox.vgrow="ALWAYS" fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
+            <VBox styleClass="workspace-body" spacing="24.0">
+                <!-- Header -->
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox HBox.hgrow="ALWAYS">
+                        <Label fx:id="viewerCaptionLabel" text="No file selected" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: #0F172A;"/>
+                        <Label fx:id="lastResultLabel" text="Select a file from the sidebar to start viewing." style="-fx-text-fill: #64748B;"/>
+                    </VBox>
+                    <HBox spacing="8.0" alignment="CENTER_RIGHT">
+                        <Button text="Delete file" onAction="#onDeleteFileCommand" styleClass="btn btn-danger">
+                            <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
+                        </Button>
+                    </HBox>
+                </HBox>
 
-        <!-- LEFT — actions + status -->
-        <VBox alignment="TOP_CENTER" spacing="10.0" prefWidth="220.0" styleClass="panel panel-left">
+                <!-- Fixed Toolbar -->
+                <HBox alignment="CENTER" spacing="12.0" minHeight="80.0">
+                    <HBox alignment="CENTER" styleClass="viewer-toolbar" minWidth="400" maxWidth="400">
+                        <Button onAction="#onZoomOutCommand" styleClass="btn" style="-fx-padding: 8;">
+                            <graphic><FontIcon iconLiteral="fas-search-minus" iconSize="16"/></graphic>
+                        </Button>
+                        <Button onAction="#onResetZoomCommand" styleClass="btn" style="-fx-padding: 8;">
+                            <graphic><FontIcon iconLiteral="fas-expand" iconSize="16"/></graphic>
+                        </Button>
+                        <Button onAction="#onZoomInCommand" styleClass="btn" style="-fx-padding: 8;">
+                            <graphic><FontIcon iconLiteral="fas-search-plus" iconSize="16"/></graphic>
+                        </Button>
+                        <Separator orientation="VERTICAL" prefHeight="20"/>
+                        <Button onAction="#onResetRotationCommand" styleClass="btn" style="-fx-padding: 8;">
+                            <graphic><FontIcon iconLiteral="fas-undo" iconSize="16"/></graphic>
+                        </Button>
+                        <Button onAction="#onCustomRotationCommand" styleClass="btn" style="-fx-padding: 8;">
+                            <graphic><FontIcon iconLiteral="fas-redo" iconSize="16"/></graphic>
+                        </Button>
+                    </HBox>
+                </HBox>
 
-            <!-- Action buttons -->
-            <VBox spacing="6.0" styleClass="card">
-                <Button text="New scan  F1" onAction="#onNewCommand"
-                        maxWidth="Infinity" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
-                </Button>
-                <Button text="Save  Ctrl+S" onAction="#onSaveCommand"
-                        maxWidth="Infinity" styleClass="btn btn-accent">
-                    <graphic><FontIcon iconLiteral="fas-save"/></graphic>
-                </Button>
-                <Button fx:id="scanButton" text="Scan  F2" onAction="#onScanCommand"
-                        disable="true" maxWidth="Infinity" styleClass="btn btn-primary">
-                    <graphic><FontIcon iconLiteral="fas-camera"/></graphic>
-                </Button>
-                <Button fx:id="finishSessionButton" text="Finish session"
-                        onAction="#onFinishSessionCommand"
-                        visible="false" managed="false"
-                        maxWidth="Infinity" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-check"/></graphic>
-                </Button>
+                <!-- Viewer -->
+                <StackPane VBox.vgrow="ALWAYS" styleClass="viewer-container" alignment="CENTER">
+                    <!-- Image -->
+                    <ImageView fx:id="pageImageView"
+                               preserveRatio="true"
+                               pickOnBounds="true"
+                               smooth="true"/>
+                </StackPane>
             </VBox>
+        </ScrollPane>
+    </VBox>
 
-            <!-- Status -->
-            <VBox spacing="6.0" styleClass="card">
-                <Label text="Status" styleClass="section-title"/>
-                <Label fx:id="lastResultLabel" text="—" wrapText="true" styleClass="status-pill"/>
-            </VBox>
-
-            <!-- Shortcuts -->
-            <VBox spacing="6.0" styleClass="card">
-                <Button text="Keyboard shortcuts" onAction="#onShowShortcutsCommand"
-                        maxWidth="Infinity" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-keyboard"/></graphic>
-                </Button>
-            </VBox>
-        </VBox>
-
-        <!-- MIDDLE — sidebar tree -->
-        <VBox spacing="8.0" prefWidth="290.0" styleClass="panel panel-sidebar">
-            <HBox alignment="CENTER_LEFT" spacing="6.0">
-                <Label text="All boxes" styleClass="section-title"/>
-                <Label text="History" styleClass="pill pill-info"/>
-            </HBox>
-
-            <HBox spacing="6.0" alignment="CENTER_LEFT">
-                <TextField fx:id="sidebarSearchField"
-                           promptText="Search boxes, barcodes, files…"
-                           HBox.hgrow="ALWAYS"/>
-                <Button onAction="#onClearSidebarSearch" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-times"/></graphic>
-                    <tooltip><Tooltip text="Clear search"/></tooltip>
-                </Button>
-            </HBox>
-
-            <TreeView fx:id="sidebarTree" VBox.vgrow="ALWAYS" showRoot="false"
-                      styleClass="app-tree"/>
-        </VBox>
-
-        <!-- RIGHT — image viewer -->
-        <VBox spacing="10.0" HBox.hgrow="ALWAYS" styleClass="panel panel-viewer">
-            <HBox alignment="CENTER_LEFT" spacing="8.0">
-                <Label fx:id="viewerCaptionLabel" text="No page to display yet"
-                       styleClass="viewer-title"/>
-                <Label text="Preview" styleClass="pill pill-accent"/>
-            </HBox>
-
-            <!-- Toolbar -->
-            <HBox spacing="6.0" styleClass="toolbar">
-                <Button text="Delete" onAction="#onDeleteFileCommand" styleClass="btn btn-logout">
-                    <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
-                    <tooltip><Tooltip text="Delete current file"/></tooltip>
-                </Button>
-                <Button text="Rotate  Ctrl+T" onAction="#onCustomRotationCommand" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-redo"/></graphic>
-                    <tooltip><Tooltip text="Custom rotation angle"/></tooltip>
-                </Button>
-                <Button text="Reset  Ctrl+0" onAction="#onResetRotationCommand" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-undo"/></graphic>
-                    <tooltip><Tooltip text="Reset rotation"/></tooltip>
-                </Button>
-                <Button text="Zoom in  Ctrl++" onAction="#onZoomInCommand" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-search-plus"/></graphic>
-                </Button>
-                <Button text="Zoom out  Ctrl+-" onAction="#onZoomOutCommand" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-search-minus"/></graphic>
-                </Button>
-                <Button text="Fit  Ctrl+1" onAction="#onResetZoomCommand" styleClass="btn">
-                    <graphic><FontIcon iconLiteral="fas-expand"/></graphic>
-                    <tooltip><Tooltip text="Fit page to viewer"/></tooltip>
-                </Button>
-            </HBox>
-
-            <!-- Image area -->
-            <StackPane VBox.vgrow="ALWAYS" styleClass="viewer-surface">
-                <ImageView fx:id="pageImageView"
-                           preserveRatio="true"
-                           pickOnBounds="true"
-                           smooth="true"
-                           fitWidth="500.0"
-                           fitHeight="540.0"/>
-            </StackPane>
-        </VBox>
-
-    </HBox>
-</VBox>
+</HBox>

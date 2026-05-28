@@ -59,9 +59,11 @@ public class ProfileManagementController {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     setText(empty ? null : item);
-                    setStyle("Active".equals(item)
-                            ? "-fx-text-fill: #16A34A; -fx-font-weight: 600;"
-                            : "-fx-text-fill: #DC2626; -fx-font-weight: 600;");
+                    getStyleClass().removeAll("text-success", "text-error");
+                    if (!empty) {
+                        getStyleClass().add("Active".equals(item) ? "text-success" : "text-error");
+                        setStyle("-fx-font-weight: 600;"); // keep weight
+                    }
                 }
             });
         }
@@ -213,7 +215,8 @@ public class ProfileManagementController {
 
     private void showMessage(String msg, boolean error) {
         messageLabel.setText(msg);
-        messageLabel.setStyle(error ? "-fx-text-fill: #cc0000;" : "-fx-text-fill: #007700;");
+        messageLabel.getStyleClass().removeAll("text-error", "text-success");
+        messageLabel.getStyleClass().add(error ? "text-error" : "text-success");
     }
 
     private void showError(String header, String content) {

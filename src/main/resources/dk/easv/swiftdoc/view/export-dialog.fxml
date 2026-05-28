@@ -22,10 +22,10 @@
     <contentText>Choose the scope, format, and destination folder.</contentText>
 
     <content>
-        <VBox spacing="14.0" styleClass="dialog-content">
-            <VBox spacing="8.0" styleClass="dialog-card">
+        <VBox spacing="20.0" styleClass="dialog-content" style="-fx-padding: 24;">
+            <VBox spacing="12.0" styleClass="dialog-card">
                 <Label text="Export Scope" styleClass="section-title"/>
-                <HBox spacing="10.0">
+                <HBox spacing="16.0">
                     <RadioButton fx:id="activeSessionRadio" text="Active session box"
                                  toggleGroup="$modeToggleGroup"/>
                     <RadioButton fx:id="selectedSidebarRadio" text="Selected sidebar item"
@@ -34,9 +34,9 @@
                 <Label fx:id="modeHintLabel" text="" styleClass="dialog-muted" wrapText="true"/>
             </VBox>
 
-            <VBox spacing="8.0" styleClass="dialog-card">
+            <VBox spacing="12.0" styleClass="dialog-card">
                 <Label text="Output Format" styleClass="section-title"/>
-                <HBox spacing="10.0">
+                <HBox spacing="16.0">
                     <RadioButton fx:id="multiPageRadio" text="Multi-page (one file per Document)"
                                  toggleGroup="$formatToggleGroup"/>
                     <RadioButton fx:id="singlePageRadio" text="Single-page (one file per page)"
@@ -45,13 +45,13 @@
                 <Label fx:id="formatHintLabel" text="" styleClass="dialog-muted" wrapText="true"/>
             </VBox>
 
-            <VBox spacing="8.0" styleClass="dialog-card">
+            <VBox spacing="12.0" styleClass="dialog-card">
                 <Label text="Destination Folder" styleClass="section-title"/>
-                <HBox spacing="8.0">
+                <HBox spacing="10.0">
                     <TextField fx:id="folderTextField" promptText="Choose output folder..." HBox.hgrow="ALWAYS"/>
                     <Button text="Browse..." onAction="#onBrowseFolder" styleClass="btn"/>
                 </HBox>
-                <Label fx:id="folderErrorLabel" text="" style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
+                <Label fx:id="folderErrorLabel" text="" style="-fx-text-fill: #cc0000; -fx-font-size: 11;" wrapText="true"/>
             </VBox>
         </VBox>
     </content>

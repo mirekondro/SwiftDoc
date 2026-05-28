@@ -15,66 +15,54 @@
             fx:controller="dk.easv.swiftdoc.controller.CreateProfileDialogController"
             fx:id="dialogPane"
             styleClass="dialog-root">
-    <headerText>Create Profile</headerText>
-    <contentText>Profiles bundle scanning settings for a specific client.</contentText>
+    <headerText>Configure Profile</headerText>
+    <contentText>Set up scanning and post-processing rules for this client.</contentText>
 
     <content>
-        <VBox spacing="14.0" styleClass="dialog-content">
-            <VBox spacing="8.0" styleClass="dialog-card">
-                <Label text="Profile Name" styleClass="section-title"/>
-                <TextField fx:id="profileNameField" promptText="e.g. 'Standard municipal box'"/>
-                <Label fx:id="profileNameErrorLabel" text=""
-                       style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
+        <VBox spacing="24.0" styleClass="dialog-content" style="-fx-padding: 32;">
+            <!-- Profile Name -->
+            <VBox spacing="8.0">
+                <Label text="Profile Name" style="-fx-font-weight: 700;"/>
+                <TextField fx:id="profileNameField" promptText="e.g. Standard municipal box"/>
+                <Label fx:id="profileNameErrorLabel" text="" styleClass="text-error" wrapText="true"/>
             </VBox>
 
-            <VBox spacing="8.0" styleClass="dialog-card">
-                <Label text="Client" styleClass="section-title"/>
-                <ComboBox fx:id="clientComboBox" promptText="Select a client..."
-                          maxWidth="1.7976931348623157E308"/>
-                <Label fx:id="clientErrorLabel" text=""
-                       style="-fx-text-fill: #cc0000; -fx-font-size: 10;" wrapText="true"/>
-                <Label text="One client can have many profiles."
-                       styleClass="dialog-muted" wrapText="true"/>
+            <!-- Client -->
+            <VBox spacing="8.0">
+                <Label text="Associated Client" style="-fx-font-weight: 700;"/>
+                <ComboBox fx:id="clientComboBox" promptText="Select a client..." maxWidth="Infinity"/>
+                <Label fx:id="clientErrorLabel" text="" styleClass="text-error" wrapText="true"/>
             </VBox>
 
-            <VBox spacing="8.0" styleClass="dialog-card">
-                <Label text="Scan Options" styleClass="section-title"/>
-                <CheckBox fx:id="duplicateDetectionCheckBox"
-                          text="Enable duplicate detection"/>
-                <Label text="When enabled, scanning detects and flags repeated pages."
-                       styleClass="dialog-muted" wrapText="true"/>
-            </VBox>
+            <!-- Page Processing -->
+            <VBox spacing="16.0" styleClass="stat-card" style="-fx-padding: 24;">
+                <Label text="Automation Rules" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+                
+                <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable intelligent duplicate detection" style="-fx-font-weight: 600;"/>
 
-            <!-- NEW: image processing applied to every page at export time -->
-            <VBox spacing="10.0" styleClass="dialog-card">
-                <Label text="Page Processing" styleClass="section-title"/>
-                <Label text="Applied to every page when this profile's box is exported. Originals are kept."
-                       styleClass="dialog-muted" wrapText="true"/>
+                <VBox spacing="12.0">
+                    <HBox spacing="16.0" alignment="CENTER_LEFT">
+                        <Label text="Auto-rotation" style="-fx-text-fill: #64748B;" minWidth="100.0"/>
+                        <Spinner fx:id="rotationSpinner" editable="true" prefWidth="120.0"/>
+                        <Label text="°" style="-fx-text-fill: #64748B;"/>
+                    </HBox>
 
-                <HBox spacing="12.0" alignment="CENTER_LEFT">
-                    <Label text="Rotation" styleClass="muted" minWidth="80.0"/>
-                    <Spinner fx:id="rotationSpinner" editable="true" prefWidth="90.0"/>
-                    <Label text="°" styleClass="muted"/>
-                </HBox>
+                    <VBox spacing="8.0">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Default Brightness" style="-fx-text-fill: #64748B;" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                            <Label fx:id="brightnessValueLabel" text="0" style="-fx-font-weight: 700;"/>
+                        </HBox>
+                        <Slider fx:id="brightnessSlider" min="-100" max="100" value="0" majorTickUnit="50" minorTickCount="4"/>
+                    </VBox>
 
-                <HBox spacing="12.0" alignment="CENTER_LEFT">
-                    <Label text="Brightness" styleClass="muted" minWidth="80.0"/>
-                    <Slider fx:id="brightnessSlider" min="-100" max="100" value="0"
-                            showTickLabels="true" showTickMarks="true"
-                            majorTickUnit="50" minorTickCount="4"
-                            HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="brightnessValueLabel" text="0" styleClass="muted" minWidth="36.0"/>
-                </HBox>
-
-                <CheckBox fx:id="blackAndWhiteCheckBox" text="Convert to black &amp; white"/>
-                <Label text="Black &amp; white produces smaller files, ideal for text documents."
-                       styleClass="dialog-muted" wrapText="true"/>
+                    <CheckBox fx:id="blackAndWhiteCheckBox" text="Optimize for text (B&amp;W)" style="-fx-font-weight: 600;"/>
+                </VBox>
             </VBox>
         </VBox>
     </content>
 
     <buttonTypes>
-        <ButtonType fx:id="createButtonType" text="Create" buttonData="OK_DONE"/>
-        <ButtonType fx:id="cancelButtonType" text="Cancel" buttonData="CANCEL_CLOSE"/>
+        <ButtonType fx:id="createButtonType" text="Create Profile" buttonData="OK_DONE"/>
+        <ButtonType fx:id="cancelButtonType" text="Discard" buttonData="CANCEL_CLOSE"/>
     </buttonTypes>
 </DialogPane>

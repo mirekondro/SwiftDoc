@@ -63,11 +63,12 @@ public class UserManagementController {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); return; }
-                setText(item);
-                setStyle("Active".equals(item)
-                        ? "-fx-text-fill: #2a7a2a; -fx-font-weight: bold;"
-                        : "-fx-text-fill: #cc0000; -fx-font-weight: bold;");
+                setText(empty ? null : item);
+                getStyleClass().removeAll("text-success", "text-error");
+                if (!empty && item != null) {
+                    getStyleClass().add("Active".equals(item) ? "text-success" : "text-error");
+                    setStyle("-fx-font-weight: bold;");
+                }
             }
         });
 
@@ -219,7 +220,8 @@ public class UserManagementController {
     }
 
     private void showMessage(String msg, boolean isError) {
-        messageLabel.setStyle(isError ? "-fx-text-fill: #cc0000;" : "-fx-text-fill: #2a7a2a;");
         messageLabel.setText(msg);
+        messageLabel.getStyleClass().removeAll("text-error", "text-success");
+        messageLabel.getStyleClass().add(isError ? "text-error" : "text-success");
     }
 }

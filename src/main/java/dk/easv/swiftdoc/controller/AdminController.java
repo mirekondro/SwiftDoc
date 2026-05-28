@@ -24,10 +24,20 @@ public class AdminController {
     @FXML private Label profileDetailsLabel;
     @FXML private ListView<Client> clientsList;
     @FXML private ImageView brandLogo;
+    @FXML private TabPane adminTabPane;
     @FXML private UserManagementController userManagementController;
 
     private User currentUser;
     private Runnable onLogout;
+
+    @FXML
+    private void onSelectProfiles() { adminTabPane.getSelectionModel().select(0); }
+    @FXML
+    private void onSelectClients() { adminTabPane.getSelectionModel().select(1); }
+    @FXML
+    private void onSelectUsers() { adminTabPane.getSelectionModel().select(2); }
+    @FXML
+    private void onSelectLogs() { adminTabPane.getSelectionModel().select(3); }
 
     public void setOnLogout(Runnable callback) {
         this.onLogout = callback;

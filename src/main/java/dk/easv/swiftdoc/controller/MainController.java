@@ -38,10 +38,12 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
 import javafx.scene.control.TextField;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -82,7 +84,7 @@ public class MainController {
     private static final double ZOOM_MAX = 8.0;
     private double zoomFactor = 1.0;
 
-    @FXML private VBox root;
+    @FXML private HBox root;
     @FXML private Button scanButton;
     @FXML private Button finishSessionButton;
     @FXML private Label sessionInfoLabel;
@@ -92,7 +94,6 @@ public class MainController {
     @FXML private ImageView pageImageView;
     @FXML private ImageView brandLogo;
     @FXML private TreeView<SidebarNode> sidebarTree;
-    @FXML private ToggleButton themeToggle;
 
     /**
      * Wrapper for tree node values. Each node holds either a Box, a Document,
@@ -114,9 +115,9 @@ public class MainController {
         @Override
         public String toString() {
             return switch (kind) {
-                case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId();
-                case DOCUMENT -> "\uD83D\uDCC4 " + document.toString();
-                case FILE -> "\uD83D\uDCC3 File #" + file.getReferenceId();
+                case BOX -> "Box #" + box.getBoxId();
+                case DOCUMENT -> document.toString();
+                case FILE -> "File #" + file.getReferenceId();
             };
         }
     }
@@ -125,8 +126,12 @@ public class MainController {
     private void initialize() {
         Platform.runLater(() -> root.requestFocus());
 
-        // Brand logo — default to light variant; theme toggle swaps to dark.
-        updateBrandLogo(false);
+        // Responsive ImageView
+        pageImageView.fitWidthProperty().bind(((StackPane)pageImageView.getParent()).widthProperty());
+        pageImageView.fitHeightProperty().bind(((StackPane)pageImageView.getParent()).heightProperty());
+
+        // Brand logo
+        updateBrandLogo();
 
         // Sidebar tree setup — invisible root, populated below.
         sidebarTree.setRoot(new TreeItem<>(null));
@@ -138,7 +143,7 @@ public class MainController {
                 .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
     }
 
-    private void updateBrandLogo(boolean darkMode) {
+    private void updateBrandLogo() {
         if (brandLogo == null) {
             return;
         }
@@ -538,9 +543,14 @@ public class MainController {
     private void configureSidebarDragAndDrop() {
         sidebarTree.setCellFactory(treeView -> {
             TreeCell<SidebarNode> cell = new TreeCell<>() {
+                private final FontIcon kindIcon = new FontIcon();
                 private final Label textLabel = new Label();
                 private final Label badgeLabel = new Label();
-                private final HBox container = new HBox(6, textLabel, badgeLabel);
+                private final HBox container = new HBox(10, kindIcon, textLabel, badgeLabel);
+
+                {
+                    container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                }
 
                 @Override
                 protected void updateItem(SidebarNode item, boolean empty) {
@@ -551,11 +561,23 @@ public class MainController {
                         setContextMenu(null);
                         return;
                     }
+                    
                     container.getStyleClass().setAll("sidebar-cell");
                     textLabel.getStyleClass().setAll("sidebar-cell-text");
                     textLabel.setText(item.toString());
+                    
+                    // Set appropriate icon
+                    kindIcon.setIconColor(javafx.scene.paint.Color.WHITE);
+                    kindIcon.setIconSize(16);
+                    switch (item.kind()) {
+                        case BOX -> kindIcon.setIconLiteral("fas-archive");
+                        case DOCUMENT -> kindIcon.setIconLiteral("fas-folder-open");
+                        case FILE -> kindIcon.setIconLiteral("fas-file-alt");
+                    }
+
                     Document.Status status = resolveBadgeStatus(item);
                     applyBadge(badgeLabel, status);
+                    
                     setText(null);
                     setGraphic(container);
                     setContextMenu(buildContextMenu(item));
@@ -1649,32 +1671,6 @@ public class MainController {
     }
 
 
-    @FXML
-    private void onThemeToggle() {
-        boolean darkMode = themeToggle != null && themeToggle.isSelected();
-        applyTheme(darkMode);
-    }
-
-    private void applyTheme(boolean darkMode) {
-        if (root == null) {
-            return;
-        }
-        if (darkMode) {
-            if (!root.getStyleClass().contains("theme-dark")) {
-                root.getStyleClass().add("theme-dark");
-            }
-            if (themeToggle != null) {
-                themeToggle.setText("Light");
-            }
-        } else {
-            root.getStyleClass().remove("theme-dark");
-            if (themeToggle != null) {
-                themeToggle.setText("Dark");
-            }
-        }
-        updateBrandLogo(darkMode);
-    }
-
     private void applyDialogTheme(DialogPane dialogPane) {
         if (dialogPane == null) {
             return;
@@ -1686,10 +1682,6 @@ public class MainController {
         }
         if (!dialogPane.getStyleClass().contains("dialog-root")) {
             dialogPane.getStyleClass().add("dialog-root");
-        }
-        if (root != null && root.getStyleClass().contains("theme-dark")
-                && !dialogPane.getStyleClass().contains("theme-dark")) {
-            dialogPane.getStyleClass().add("theme-dark");
         }
     }
 }
