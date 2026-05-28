@@ -300,6 +300,12 @@ public class MainController {
     private void onKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
+        if (event.isShiftDown() && code == KeyCode.S) {
+            onShowShortcutsCommand();
+            event.consume();
+            return;
+        }
+
         if (code == KeyCode.F1) {
             onNewCommand();
             event.consume();
@@ -1155,19 +1161,16 @@ public class MainController {
         pageImageView.setImage(null);
         resetZoom();
 
-        // Add the new box to the in-memory model so it's available when we
-        // later return to history view.
+
         allBranches.add(new BoxBranch(
                 activeSession.getBox(),
-                new ArrayList<>(List.of(new DocumentBranch(
-                        activeSession.getFirstDocument(), new ArrayList<>())))));
+                new ArrayList<>()));
 
         // Switch the sidebar to session-view: only the active box shows.
         renderForCurrentMode();
 
         System.out.println("Session started — Box id "
-                + activeSession.getBox().getBoxId()
-                + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
+                + activeSession.getBox().getBoxName());
     }
 
     @FXML
@@ -1268,8 +1271,14 @@ public class MainController {
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );
-                    addFileToSidebar(r.savedFile());
+
+                    if (r.newDocument() != null) {
+                        addDocumentToSidebar(r.newDocument(), r.savedFile());
+                    } else {
+                        addFileToSidebar(r.savedFile());
+                    }
                 }
+
                 case DOCUMENT_SPLIT -> {
                     lastResultLabel.setText("Barcode \"" + r.barcodeValue()
                             + "\" detected — new Document #"
@@ -1375,10 +1384,12 @@ public class MainController {
     }
 
     private void refreshSessionLabels() {
+        Document current = activeSession.getCurrentDocument();
+        String docLine = (current == null)
+                ? "Current document: none yet"
+                : "Current document: #" + current.getDocumentNumber();
         sessionInfoLabel.setText(
-                "Box #" + activeSession.getBox().getBoxId() + "\n"
-                        + "Current document: #"
-                        + activeSession.getCurrentDocument().getDocumentNumber());
+                "Box #" + activeSession.getBox().getBoxId() + "\n" + docLine);
         counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());
     }
 

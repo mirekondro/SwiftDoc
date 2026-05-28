@@ -8,16 +8,9 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.control.SpinnerValueFactory;
+
 
 import java.sql.SQLException;
 import java.util.List;
@@ -31,14 +24,18 @@ public class ProfileManagementController {
     @FXML private TableColumn<ScanningProfile, String>  colName;
     @FXML private TableColumn<ScanningProfile, String>  colClient;
     @FXML private TableColumn<ScanningProfile, Boolean> colDupDetect;
-    @FXML private TableColumn<ScanningProfile, String>  colStatus;
 
-    @FXML private Button   disableButton;
     @FXML private Label    formTitleLabel;
     @FXML private TextField nameField;
     @FXML private ComboBox<Client> clientCombo;
     @FXML private CheckBox dupDetectCheck;
+    @FXML private Spinner<Integer> rotationSpinner;
+    @FXML private Slider   brightnessSlider;
+    @FXML private Label    brightnessValueLabel;
+    @FXML private CheckBox blackAndWhiteCheck;
     @FXML private Label    messageLabel;
+    @FXML private Button disableButton;
+    @FXML private TableColumn<ScanningProfile, String> colStatus;
 
     private ScanningProfile editingProfile;
     private List<Client> clients;
@@ -62,7 +59,7 @@ public class ProfileManagementController {
                     getStyleClass().removeAll("text-success", "text-error");
                     if (!empty) {
                         getStyleClass().add("Active".equals(item) ? "text-success" : "text-error");
-                        setStyle("-fx-font-weight: 600;"); // keep weight
+                        setStyle("-fx-font-weight: 600;");
                     }
                 }
             });
@@ -77,6 +74,11 @@ public class ProfileManagementController {
 
         profilesTable.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, sel) -> onSelectionChanged(sel));
+
+        rotationSpinner.setValueFactory(
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 359, 0));
+        brightnessSlider.valueProperty().addListener((obs, o, n) ->
+                brightnessValueLabel.setText(String.valueOf(n.intValue())));
 
         clearForm();
         Platform.runLater(this::refresh);
@@ -103,10 +105,8 @@ public class ProfileManagementController {
         formTitleLabel.setText("Profile: " + profile.getProfileName());
         nameField.setText(profile.getProfileName());
         dupDetectCheck.setSelected(profile.isDuplicateDetectionEnabled());
+        loadProcessing(profile);
         messageLabel.setText("");
-        if (disableButton != null) {
-            disableButton.setText(profile.isActive() ? "Disable" : "Enable");
-        }
 
         if (clients != null) {
             clients.stream()
@@ -123,6 +123,7 @@ public class ProfileManagementController {
         formTitleLabel.setText("New profile");
         nameField.clear();
         dupDetectCheck.setSelected(false);
+        resetProcessing();
         if (clients != null && !clients.isEmpty()) {
             clientCombo.getSelectionModel().selectFirst();
         }
@@ -138,6 +139,7 @@ public class ProfileManagementController {
         formTitleLabel.setText("Edit: " + selected.getProfileName());
         nameField.setText(selected.getProfileName());
         dupDetectCheck.setSelected(selected.isDuplicateDetectionEnabled());
+        loadProcessing(selected);
         messageLabel.setText("");
         if (clients != null) {
             clients.stream()
@@ -149,28 +151,33 @@ public class ProfileManagementController {
     }
 
     @FXML
-    private void onDisableClicked() {
+    private void onDeleteClicked() {
         ScanningProfile selected = profilesTable.getSelectionModel().getSelectedItem();
-        if (selected == null) { showMessage("Select a profile first.", true); return; }
+        if (selected == null) { showMessage("Select a profile to delete.", true); return; }
 
-        boolean newActive = !selected.isActive();
-        String verb = newActive ? "Enable" : "Disable";
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle(verb + " profile");
-        confirm.setHeaderText(verb + " '" + selected.getProfileName() + "'?");
-        confirm.setContentText(newActive
-                ? "Users will be able to use this profile again."
-                : "The profile stays in the database but is hidden from users.");
+        confirm.setTitle("Delete Profile");
+        confirm.setHeaderText("Delete '" + selected.getProfileName() + "'?");
+        confirm.setContentText("This cannot be undone. Profiles with existing boxes cannot be deleted.");
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
 
         try {
-            profileService.setProfileActive(selected.getProfileId(), newActive);
+            profileService.deleteProfile(selected.getProfileId());
+            clearForm();
             refresh();
-            showMessage("Profile " + (newActive ? "enabled." : "disabled."), false);
+            showMessage("Profile deleted.", false);
+        } catch (IllegalStateException ex) {
+            showMessage(ex.getMessage(), true);
         } catch (SQLException ex) {
-            showError(verb + " failed", ex.getMessage());
+            showError("Delete failed", ex.getMessage());
         }
+    }
+    @FXML
+    private void onDisableClicked() {
+        ScanningProfile selected = profilesTable.getSelectionModel().getSelectedItem();
+        if (selected == null) { showMessage("Select a profile first.", true); return; }
+        showMessage("Disable/enable for profiles is not implemented yet.", true);
     }
 
     @FXML
@@ -181,15 +188,21 @@ public class ProfileManagementController {
         if (name == null || name.isBlank()) { showMessage("Profile name is required.", true); return; }
         if (client == null)                 { showMessage("Client is required.", true); return; }
 
+        int rotation = rotationSpinner.getValue() == null ? 0 : rotationSpinner.getValue();
+        int brightness = (int) Math.round(brightnessSlider.getValue());
+        boolean blackAndWhite = blackAndWhiteCheck.isSelected();
+
         try {
             if (editingProfile == null) {
-                profileService.createProfile(name, client, dupDetectCheck.isSelected());
+                profileService.createProfile(name, client, dupDetectCheck.isSelected(),
+                        rotation, brightness, blackAndWhite);
                 showMessage("Profile created.", false);
             } else {
                 profileService.updateProfile(editingProfile.getProfileId(), name, client,
-                        dupDetectCheck.isSelected());
+                        dupDetectCheck.isSelected(), rotation, brightness, blackAndWhite);
                 showMessage("Profile saved.", false);
             }
+
             editingProfile = null;
             refresh();
             clearForm();
@@ -208,9 +221,24 @@ public class ProfileManagementController {
         formTitleLabel.setText("Select a profile or click Create");
         nameField.clear();
         dupDetectCheck.setSelected(false);
+        resetProcessing();
         clientCombo.getSelectionModel().clearSelection();
         messageLabel.setText("");
         profilesTable.getSelectionModel().clearSelection();
+    }
+
+    private void loadProcessing(ScanningProfile p) {
+        rotationSpinner.getValueFactory().setValue(p.getProfileRotation());
+        brightnessSlider.setValue(p.getProfileBrightness());
+        brightnessValueLabel.setText(String.valueOf(p.getProfileBrightness()));
+        blackAndWhiteCheck.setSelected(p.isBlackAndWhite());
+    }
+
+    private void resetProcessing() {
+        rotationSpinner.getValueFactory().setValue(0);
+        brightnessSlider.setValue(0);
+        brightnessValueLabel.setText("0");
+        blackAndWhiteCheck.setSelected(false);
     }
 
     private void showMessage(String msg, boolean error) {

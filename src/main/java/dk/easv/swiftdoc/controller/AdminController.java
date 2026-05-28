@@ -1,17 +1,14 @@
 package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.model.Client;
-import dk.easv.swiftdoc.model.ScanningProfile;
 import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ProfileService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -20,8 +17,6 @@ public class AdminController {
     private final ProfileService profileService = new ProfileService();
 
     @FXML private Label welcomeLabel;
-    @FXML private ListView<ScanningProfile> profilesList;
-    @FXML private Label profileDetailsLabel;
     @FXML private ListView<Client> clientsList;
     @FXML private ImageView brandLogo;
     @FXML private TabPane adminTabPane;
@@ -39,34 +34,15 @@ public class AdminController {
     @FXML
     private void onSelectLogs() { adminTabPane.getSelectionModel().select(3); }
 
-    public void setOnLogout(Runnable callback) {
-        this.onLogout = callback;
-    }
-
     @FXML
     private void initialize() {
-        loadBrandLogo();
-        onRefreshClients();
-    }
-
-    private void loadBrandLogo() {
-        if (brandLogo == null) {
-            return;
-        }
-        Image image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/LogoBlue2H.png");
-        if (image == null) {
-            image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/WeblagerLightBLue.png");
-        }
-        brandLogo.setImage(image);
-    }
-
-    private Image loadLogoImage(String classpath) {
-        try {
-            var url = AdminController.class.getResource(classpath);
-            return url != null ? new Image(url.toExternalForm()) : null;
-        } catch (Exception ex) {
-            return null;
-        }
+        // Profiles are handled by the included ProfileManagementController.
+        // Only load clients here if this view still owns a clients list.
+        javafx.application.Platform.runLater(() -> {
+            if (clientsList != null) {
+                onRefreshClients();
+            }
+        });
     }
 
     public void setCurrentUser(User user) {
@@ -79,69 +55,15 @@ public class AdminController {
         }
     }
 
-
-    // ---------------- Profiles ----------------
-
-    @FXML
-    private void onRefreshProfiles() {
-        try {
-            List<ScanningProfile> profiles = profileService.getProfiles();
-            profilesList.setItems(FXCollections.observableArrayList(profiles));
-        } catch (SQLException ex) {
-            showError("Could not load profiles", ex.getMessage());
-        }
+    public void setOnLogout(Runnable callback) {
+        this.onLogout = callback;
     }
-
-    @FXML
-    private void onCreateProfile() {
-        try {
-            FXMLLoader loader = new FXMLLoader(
-                    AdminController.class.getResource("/dk/easv/swiftdoc/view/create-profile-dialog.fxml"));
-            DialogPane pane = loader.load();
-            CreateProfileDialogController dialogController = loader.getController();
-
-            List<Client> clients = profileService.getClients();
-            if (clients.isEmpty()) {
-                showError("No clients", "Add a client to dbo.Clients before creating a profile.");
-                return;
-            }
-            dialogController.setClients(clients);
-
-            Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setDialogPane(pane);
-            dialog.setTitle("Create Profile");
-            dialog.showAndWait();
-
-            CreateProfileDialogController.CreateRequest req = dialogController.getCreateRequest();
-            if (req == null) return;
-            profileService.createProfile(
-                    req.profileName(), req.client(), req.duplicateDetectionEnabled(),
-                    req.profileRotation(), req.profileBrightness(), req.blackAndWhite());
-            onRefreshProfiles();
-        } catch (IOException | SQLException | IllegalArgumentException ex) {
-            showError("Could not create profile", ex.getMessage());
-        }
-    }
-
-    private void showProfileDetails(ScanningProfile profile) {
-        if (profile == null) {
-            profileDetailsLabel.setText("Select a profile to see details");
-            return;
-        }
-        StringBuilder b = new StringBuilder();
-        b.append("Name: ").append(profile.getProfileName()).append('\n');
-        b.append("Client: ").append(profile.getClientName()).append('\n');
-        b.append("Split rule: ").append(profile.getSplitRule() == null ? "(none)" : profile.getSplitRule()).append('\n');
-        b.append("Duplicate detection: ")
-                .append(profile.isDuplicateDetectionEnabled() ? "Enabled" : "Disabled");
-        profileDetailsLabel.setText(b.toString());
-    }
-
 
     // ---------------- Clients ----------------
 
     @FXML
     private void onRefreshClients() {
+        if (clientsList == null) return;
         try {
             List<Client> clients = profileService.getClients();
             clientsList.setItems(FXCollections.observableArrayList(clients));
@@ -150,10 +72,29 @@ public class AdminController {
         }
     }
 
+    @FXML
+    private void onCreateClient() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Create Client");
+        dialog.setHeaderText("Add a new client");
+        dialog.setContentText("Client name:");
+
+        dialog.showAndWait().ifPresent(name -> {
+            try {
+                profileService.createClient(name);
+                onRefreshClients();
+            } catch (IllegalArgumentException | SQLException ex) {
+                showError("Could not create client", ex.getMessage());
+            }
+        });
+    }
+
     // ---------------- Session ----------------
 
     @FXML
     private void onLogoutCommand() {
+        Stage stage = (Stage) welcomeLabel.getScene().getWindow();
+        stage.close();
         if (onLogout != null) {
             onLogout.run();
         }
