@@ -129,14 +129,26 @@ public class ScanService {
         }
 
         // Non-barcode page: append as a File under the current Document.
+        // Lazy creation: if no document exists yet (session just started and the
+        // first page is not a barcode), create Document 1 now with no barcode.
+        Document pageDoc = session.getCurrentDocument();
+        boolean createdNewDoc = false;
+        if (pageDoc == null) {
+            pageDoc = documentDAO.create(session.getBox().getBoxId(), null);
+            session.setCurrentDocument(pageDoc);
+            createdNewDoc = true;
+        }
         File saved = fileDAO.create(
-                session.getCurrentDocument().getDocumentId(),
+                pageDoc.getDocumentId(),
                 session.getBox().getBoxId(),
                 tiff.data(),
                 session.getUser().getUserId(),
                 session.getUser().getUsername()
         );
         session.incrementFileCount();
-        return new ScanResult(Kind.PAGE, tiff.data(), saved, null, null);
+        // If this page started a brand-new document, report it so the UI can
+        // add the document node to the sidebar.
+        return new ScanResult(Kind.PAGE, tiff.data(), saved,
+                createdNewDoc ? pageDoc : null, null);
     }
 }

@@ -56,7 +56,6 @@ public class ScanSessionService {
         }
 
         Box box = boxDAO.create(boxName.trim(), profile.getProfileId());
-        Document firstDocument = documentDAO.create(box.getBoxId(), null);
-        return new ScanSession(box, firstDocument, user);
+        return new ScanSession(box, user);
     }
 }
