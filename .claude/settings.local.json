@@ -18,7 +18,8 @@
       "Skill(ui-ux-pro-max)",
       "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"desktop saas admin dashboard scanning document professional modern clean\" --design-system -p \"SwiftDoc\")",
       "Bash(./mvnw -q resources:resources compile)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(xargs cat)"
     ]
   }
 }
