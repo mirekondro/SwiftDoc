@@ -121,7 +121,7 @@ public class MainController {
             return switch (kind) {
                 case BOX -> "Box #" + box.getBoxId();
                 case DOCUMENT -> document.toString();
-                case FILE -> "File #" + file.getReferenceId();
+                case FILE -> "File #" + file.getIncrementalId();
             };
         }
     }
@@ -232,7 +232,7 @@ public class MainController {
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Delete File");
-        confirm.setHeaderText("Delete File #" + currentlyDisplayedFile.getReferenceId() + "?");
+        confirm.setHeaderText("Delete File #" + currentlyDisplayedFile.getIncrementalId() + "?");
         confirm.setContentText("This action cannot be undone.");
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
@@ -581,7 +581,7 @@ public class MainController {
 
     private boolean fileMatches(File file, String needle) {
         if (file == null) return false;
-        return ("file #" + file.getReferenceId()).contains(needle);
+        return ("file #" + file.getIncrementalId()).contains(needle);
     }
 
     private void configureSidebarDragAndDrop() {
@@ -639,14 +639,25 @@ public class MainController {
 
             cell.setOnDragDetected(event -> {
                 TreeItem<SidebarNode> item = cell.getTreeItem();
-                if (!isFileItem(item)) {
+                if (!isFileItem(item) && !isDocumentItem(item)) {
                     return;
                 }
                 Dragboard dragboard = cell.startDragAndDrop(TransferMode.MOVE);
                 ClipboardContent content = new ClipboardContent();
-                content.putString(Integer.toString(item.getValue().file().getFileId()));
+                if (isFileItem(item)) {
+                    content.putString("FILE:" + item.getValue().file().getFileId());
+                } else {
+                    content.putString("DOC:" + item.getValue().document().getDocumentId());
+                }
                 dragboard.setContent(content);
+
+                javafx.scene.SnapshotParameters snapParams = new javafx.scene.SnapshotParameters();
+                snapParams.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                dragboard.setDragView(cell.snapshot(snapParams, null),
+                        event.getX(), event.getY());
+
                 draggedTreeItem = item;
+                cell.getStyleClass().add("drag-source");
                 event.consume();
             });
 
@@ -655,27 +666,73 @@ public class MainController {
                     return;
                 }
                 TreeItem<SidebarNode> target = cell.getTreeItem();
+                clearCellDropStyles(cell);
                 if (isValidDropTarget(draggedTreeItem, target)) {
                     event.acceptTransferModes(TransferMode.MOVE);
+                    applyDropIndicator(cell, target, event.getY());
                 }
                 event.consume();
             });
 
+            cell.setOnDragExited(event -> clearCellDropStyles(cell));
+
             cell.setOnDragDropped(event -> {
+                clearCellDropStyles(cell);
                 if (draggedTreeItem == null) {
                     return;
                 }
                 TreeItem<SidebarNode> target = cell.getTreeItem();
                 boolean completed = false;
                 if (isValidDropTarget(draggedTreeItem, target)) {
-                    completed = moveDraggedFile(target);
+                    if (isFileItem(draggedTreeItem)) {
+                        completed = moveDraggedFile(target);
+                    } else if (isDocumentItem(draggedTreeItem)) {
+                        completed = mergeDraggedDocument(target);
+                    }
                 }
                 event.setDropCompleted(completed);
                 event.consume();
             });
 
-            cell.setOnDragDone(event -> draggedTreeItem = null);
+            cell.setOnDragDone(event -> {
+                cell.getStyleClass().remove("drag-source");
+                clearAllDropStyles();
+                draggedTreeItem = null;
+            });
             return cell;
+        });
+    }
+
+    /**
+     * Apply a visible drop indicator on the cell based on what is being dragged.
+     *   - File reorder within same doc: insertion line above or below target
+     *   - File move into another doc, or doc merge: green highlight on target
+     */
+    private void applyDropIndicator(TreeCell<SidebarNode> cell,
+                                    TreeItem<SidebarNode> target,
+                                    double pointerY) {
+        if (isFileItem(draggedTreeItem) && isFileItem(target)) {
+            TreeItem<SidebarNode> sourceDoc = draggedTreeItem.getParent();
+            TreeItem<SidebarNode> targetDoc = target.getParent();
+            if (sourceDoc == targetDoc) {
+                cell.getStyleClass().add(pointerY < cell.getHeight() / 2.0
+                        ? "drop-above" : "drop-below");
+            } else {
+                cell.getStyleClass().add("drop-into");
+            }
+            return;
+        }
+        cell.getStyleClass().add("drop-into");
+    }
+
+    private void clearCellDropStyles(TreeCell<SidebarNode> cell) {
+        cell.getStyleClass().removeAll("drop-above", "drop-below", "drop-into");
+    }
+
+    private void clearAllDropStyles() {
+        if (sidebarTree == null) return;
+        sidebarTree.lookupAll(".tree-cell").forEach(node -> {
+            node.getStyleClass().removeAll("drop-above", "drop-below", "drop-into", "drag-source");
         });
     }
 
@@ -836,6 +893,8 @@ public class MainController {
             siblings.remove(draggedTreeItem);
             siblings.add(dropIndex, draggedTreeItem);
             persistDocumentOrderAsync(sourceDocItem);
+            sidebarTree.refresh();
+            refreshViewerCaption();
             return true;
         }
 
@@ -857,7 +916,20 @@ public class MainController {
         File movedFile = draggedTreeItem.getValue().file();
         movedFile.setDocumentId(targetDocItem.getValue().document().getDocumentId());
         persistCrossDocumentMoveAsync(sourceDocItem, targetDocItem, movedFile);
+        sidebarTree.refresh();
+        refreshViewerCaption();
         return true;
+    }
+
+    /** Update the viewer caption if the currently displayed file's number changed. */
+    private void refreshViewerCaption() {
+        if (currentlyDisplayedFile == null) return;
+        viewerCaptionLabel.setText(
+                "File #" + currentlyDisplayedFile.getIncrementalId()
+                        + " — Document " + currentlyDisplayedFile.getDocumentId()
+                        + (currentlyDisplayedFile.getRotationAngle() != 0
+                        ? "  ·  " + currentlyDisplayedFile.getRotationAngle() + "°"
+                        : ""));
     }
 
     private TreeItem<SidebarNode> resolveTargetDocument(TreeItem<SidebarNode> target) {
@@ -871,21 +943,151 @@ public class MainController {
     }
 
     private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
-        if (!isFileItem(dragged) || target == null || target == dragged) {
+        if (dragged == null || target == null || target == dragged) {
             return false;
         }
-        TreeItem<SidebarNode> sourceDoc = dragged.getParent();
-        if (!isDocumentItem(sourceDoc)) {
+        if (isFileItem(dragged)) {
+            TreeItem<SidebarNode> sourceDoc = dragged.getParent();
+            if (!isDocumentItem(sourceDoc)) {
+                return false;
+            }
+            TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+            if (!isDocumentItem(targetDoc)) {
+                return false;
+            }
+            if (sourceDoc == targetDoc) {
+                return true;
+            }
+            return isSameBox(sourceDoc, targetDoc);
+        }
+        if (isDocumentItem(dragged)) {
+            TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+            if (!isDocumentItem(targetDoc) || targetDoc == dragged) {
+                return false;
+            }
+            // Don't allow merging the active session's placeholder/current document.
+            if (activeSession != null) {
+                int activeDocId = activeSession.getCurrentDocument() == null ? -1
+                        : activeSession.getCurrentDocument().getDocumentId();
+                int draggedId = dragged.getValue().document().getDocumentId();
+                int targetId = targetDoc.getValue().document().getDocumentId();
+                if (draggedId == activeDocId || targetId == activeDocId) {
+                    return false;
+                }
+            }
+            return isSameBox(dragged, targetDoc);
+        }
+        return false;
+    }
+
+    private boolean mergeDraggedDocument(TreeItem<SidebarNode> target) {
+        TreeItem<SidebarNode> sourceDocItem = draggedTreeItem;
+        TreeItem<SidebarNode> targetDocItem = resolveTargetDocument(target);
+        if (!isDocumentItem(sourceDocItem) || !isDocumentItem(targetDocItem)
+                || sourceDocItem == targetDocItem) {
             return false;
         }
-        TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
-        if (!isDocumentItem(targetDoc)) {
+
+        Document sourceDoc = sourceDocItem.getValue().document();
+        Document targetDoc = targetDocItem.getValue().document();
+        String mergedBarcode = combineBarcodes(targetDoc.getBarcodeValue(), sourceDoc.getBarcodeValue());
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Merge documents");
+        confirm.setHeaderText("Merge \"" + sourceDoc + "\" into \"" + targetDoc + "\"?");
+        confirm.setContentText("All pages from the source document will be appended "
+                + "to the target. The source document will be deleted.\n\n"
+                + "Merged name: " + (mergedBarcode == null ? "(no barcode)" : mergedBarcode));
+        Optional<ButtonType> choice = confirm.showAndWait();
+        if (choice.isEmpty() || choice.get() != ButtonType.OK) {
             return false;
         }
-        if (sourceDoc == targetDoc) {
-            return true;
+
+        applyMergeInMemory(sourceDocItem, targetDocItem, mergedBarcode);
+        persistMergeAsync(sourceDoc.getDocumentId(), targetDoc.getDocumentId(), mergedBarcode);
+        return true;
+    }
+
+    private String combineBarcodes(String targetBarcode, String sourceBarcode) {
+        boolean tBlank = targetBarcode == null || targetBarcode.isBlank();
+        boolean sBlank = sourceBarcode == null || sourceBarcode.isBlank();
+        if (tBlank && sBlank) return null;
+        if (tBlank) return sourceBarcode.trim();
+        if (sBlank) return targetBarcode.trim();
+        return targetBarcode.trim() + " + " + sourceBarcode.trim();
+    }
+
+    /**
+     * Apply the merge to the in-memory model and the tree:
+     *   - move source's files into target (in-memory list + tree children)
+     *   - update target document's barcode value
+     *   - remove source document from box branch + tree
+     */
+    private void applyMergeInMemory(TreeItem<SidebarNode> sourceDocItem,
+                                    TreeItem<SidebarNode> targetDocItem,
+                                    String mergedBarcode) {
+        Document sourceDoc = sourceDocItem.getValue().document();
+        Document targetDoc = targetDocItem.getValue().document();
+        int boxId = targetDoc.getBoxId();
+
+        targetDoc.setBarcodeValue(mergedBarcode);
+
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() != boxId) continue;
+            DocumentBranch sourceBranch = null;
+            DocumentBranch targetBranch = null;
+            for (DocumentBranch db : boxBranch.documents()) {
+                if (db.document().getDocumentId() == sourceDoc.getDocumentId()) sourceBranch = db;
+                if (db.document().getDocumentId() == targetDoc.getDocumentId()) targetBranch = db;
+            }
+            if (sourceBranch != null && targetBranch != null) {
+                List<File> mergedFiles = new ArrayList<>(targetBranch.files());
+                int nextIncremental = mergedFiles.size() + 1;
+                for (File f : sourceBranch.files()) {
+                    f.setDocumentId(targetDoc.getDocumentId());
+                    f.setIncrementalId(nextIncremental++);
+                    mergedFiles.add(f);
+                }
+                int targetIdx = boxBranch.documents().indexOf(targetBranch);
+                boxBranch.documents().set(targetIdx, new DocumentBranch(targetDoc, mergedFiles));
+                boxBranch.documents().remove(sourceBranch);
+            }
+            break;
         }
-        return isSameBox(sourceDoc, targetDoc);
+
+        // Tree: move children, update target SidebarNode, remove source item.
+        List<TreeItem<SidebarNode>> sourceChildren = new ArrayList<>(sourceDocItem.getChildren());
+        sourceDocItem.getChildren().clear();
+        targetDocItem.getChildren().addAll(sourceChildren);
+        targetDocItem.setValue(SidebarNode.forDocument(targetDoc));
+        targetDocItem.setExpanded(true);
+
+        TreeItem<SidebarNode> sourceBoxItem = sourceDocItem.getParent();
+        if (sourceBoxItem != null) {
+            sourceBoxItem.getChildren().remove(sourceDocItem);
+        }
+        sidebarTree.refresh();
+    }
+
+    private void persistMergeAsync(int sourceDocId, int targetDocId, String mergedBarcode) {
+        Thread worker = new Thread(() -> {
+            try {
+                sidebarService.mergeDocuments(sourceDocId, targetDocId, mergedBarcode);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Merge failed");
+                    alert.setHeaderText("Could not merge documents");
+                    alert.setContentText(ex.getMessage()
+                            + "\n\nReloading sidebar to reflect actual state.");
+                    alert.showAndWait();
+                    loadSidebarTreeAsync();
+                });
+            }
+        }, "sidebar-merge-worker");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private boolean isSameBox(TreeItem<SidebarNode> sourceDocItem, TreeItem<SidebarNode> targetDocItem) {
@@ -1065,14 +1267,14 @@ public class MainController {
      * DB call runs on a background thread; UI update on FX thread.
      */
     private void loadAndDisplayFile(File file) {
-        viewerCaptionLabel.setText("Loading File #" + file.getReferenceId() + "...");
+        viewerCaptionLabel.setText("Loading File #" + file.getIncrementalId() + "...");
 
         Thread worker = new Thread(() -> {
             try {
                 byte[] tiffBytes = sidebarService.loadTiffData(file.getFileId());
                 if (tiffBytes == null || tiffBytes.length == 0) {
                     Platform.runLater(() -> viewerCaptionLabel.setText(
-                            "File #" + file.getReferenceId() + " has no data."));
+                            "File #" + file.getIncrementalId() + " has no data."));
                     return;
                 }
                 Image image = tiffImageLoader.load(tiffBytes);
@@ -1082,7 +1284,7 @@ public class MainController {
                     pageImageView.setRotate(file.getRotationAngle());
                     resetZoom();
                     viewerCaptionLabel.setText(
-                            "File #" + file.getReferenceId()
+                            "File #" + file.getIncrementalId()
                                     + " — Document " + file.getDocumentId()
                                     + (file.getRotationAngle() != 0
                                     ? "  ·  " + file.getRotationAngle() + "°"
@@ -1091,7 +1293,7 @@ public class MainController {
             } catch (SQLException | IOException ex) {
                 ex.printStackTrace();
                 Platform.runLater(() -> viewerCaptionLabel.setText(
-                        "Could not load File #" + file.getReferenceId()
+                        "Could not load File #" + file.getIncrementalId()
                                 + ": " + ex.getMessage()));
             }
         }, "sidebar-load-worker");
@@ -1343,14 +1545,14 @@ public class MainController {
             switch (r.kind()) {
                 case PAGE -> {
                     lastResultLabel.setText("Page saved as File #"
-                            + r.savedFile().getReferenceId()
+                            + r.savedFile().getIncrementalId()
                             + " (" + r.savedFile().getTiffData().length + " bytes)");
                     System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
                             + " in Document " + r.savedFile().getDocumentId());
 
                     showPageInViewer(
                             r.tiffBytes(),
-                            "File #" + r.savedFile().getReferenceId()
+                            "File #" + r.savedFile().getIncrementalId()
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );
@@ -1371,7 +1573,7 @@ public class MainController {
 
                     showPageInViewer(
                             r.tiffBytes(),
-                            "File #" + r.savedFile().getReferenceId()
+                            "File #" + r.savedFile().getIncrementalId()
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );

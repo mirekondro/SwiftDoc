@@ -97,6 +97,84 @@ public class DocumentDAO {
         return documents;
     }
 
+    private static final String MAX_INCREMENTAL_IN_DOC =
+            "SELECT ISNULL(MAX(IncrementalId), 0) FROM dbo.Files WHERE DocumentId = ?";
+
+    private static final String SELECT_FILES_FOR_REASSIGN =
+            "SELECT FileId FROM dbo.Files WHERE DocumentId = ? ORDER BY IncrementalId";
+
+    private static final String REASSIGN_FILE =
+            "UPDATE dbo.Files SET DocumentId = ?, IncrementalId = ? WHERE FileId = ?";
+
+    private static final String DELETE_DOCUMENT =
+            "DELETE FROM dbo.Documents WHERE DocumentId = ?";
+
+    /**
+     * Merge sourceDocId into targetDocId atomically:
+     *   - All Files in source are reassigned to target, with IncrementalId
+     *     continuing after target's current max.
+     *   - target.BarcodeValue is updated to mergedBarcode.
+     *   - source Document is deleted.
+     */
+    public void merge(int sourceDocId, int targetDocId, String mergedBarcode) throws SQLException {
+        if (sourceDocId == targetDocId) {
+            throw new IllegalArgumentException("Cannot merge a document into itself");
+        }
+        try (Connection conn = DBConnection.getInstance().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int nextIncremental;
+                try (PreparedStatement maxStmt = conn.prepareStatement(MAX_INCREMENTAL_IN_DOC)) {
+                    maxStmt.setInt(1, targetDocId);
+                    try (ResultSet rs = maxStmt.executeQuery()) {
+                        rs.next();
+                        nextIncremental = rs.getInt(1) + 1;
+                    }
+                }
+
+                List<Integer> sourceFileIds = new ArrayList<>();
+                try (PreparedStatement selStmt = conn.prepareStatement(SELECT_FILES_FOR_REASSIGN)) {
+                    selStmt.setInt(1, sourceDocId);
+                    try (ResultSet rs = selStmt.executeQuery()) {
+                        while (rs.next()) sourceFileIds.add(rs.getInt(1));
+                    }
+                }
+
+                try (PreparedStatement upd = conn.prepareStatement(REASSIGN_FILE)) {
+                    for (int fileId : sourceFileIds) {
+                        upd.setInt(1, targetDocId);
+                        upd.setInt(2, nextIncremental++);
+                        upd.setInt(3, fileId);
+                        upd.addBatch();
+                    }
+                    if (!sourceFileIds.isEmpty()) upd.executeBatch();
+                }
+
+                try (PreparedStatement bar = conn.prepareStatement(UPDATE_BARCODE)) {
+                    if (mergedBarcode == null || mergedBarcode.isBlank()) {
+                        bar.setNull(1, Types.NVARCHAR);
+                    } else {
+                        bar.setString(1, mergedBarcode);
+                    }
+                    bar.setInt(2, targetDocId);
+                    bar.executeUpdate();
+                }
+
+                try (PreparedStatement del = conn.prepareStatement(DELETE_DOCUMENT)) {
+                    del.setInt(1, sourceDocId);
+                    del.executeUpdate();
+                }
+
+                conn.commit();
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
     public void updateBarcodeValue(int documentId, String barcodeValue) throws SQLException {
         try (Connection conn = DBConnection.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(UPDATE_BARCODE)) {

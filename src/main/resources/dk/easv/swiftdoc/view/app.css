@@ -121,6 +121,27 @@
     -fx-background-color: rgba(255,255,255,0.12);
 }
 
+/* Drag and drop visual feedback */
+.app-tree .tree-cell.drag-source .sidebar-cell {
+    -fx-opacity: 0.45;
+}
+.app-tree .tree-cell.drop-above {
+    -fx-border-color: #24C79F transparent transparent transparent;
+    -fx-border-width: 3 0 0 0;
+    -fx-border-insets: 0;
+}
+.app-tree .tree-cell.drop-below {
+    -fx-border-color: transparent transparent #24C79F transparent;
+    -fx-border-width: 0 0 3 0;
+    -fx-border-insets: 0;
+}
+.app-tree .tree-cell.drop-into .sidebar-cell {
+    -fx-background-color: rgba(36,199,159,0.35);
+    -fx-border-color: #24C79F;
+    -fx-border-width: 2;
+    -fx-border-radius: 12;
+}
+
 .app-tree .tree-cell .arrow {
     -fx-background-color: #FFFFFF; /* White arrows */
 }

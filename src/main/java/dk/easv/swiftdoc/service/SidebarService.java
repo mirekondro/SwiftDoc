@@ -110,4 +110,13 @@ public class SidebarService {
     public void updateFileRotation(int fileId, int rotationAngle) throws SQLException {
         fileDAO.updateRotation(fileId, rotationAngle);
     }
+
+    /**
+     * Merge sourceDocId into targetDocId. All files from source are reassigned
+     * to target (with continuing IncrementalId), target's barcode is rewritten
+     * to mergedBarcode, and the source Document row is deleted.
+     */
+    public void mergeDocuments(int sourceDocId, int targetDocId, String mergedBarcode) throws SQLException {
+        documentDAO.merge(sourceDocId, targetDocId, mergedBarcode);
+    }
 }
