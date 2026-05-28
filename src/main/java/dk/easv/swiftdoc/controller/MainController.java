@@ -451,18 +451,7 @@ public class MainController {
     }
 
     private List<BoxBranch> branchesForCurrentMode() {
-        if (activeSession == null) {
-            return allBranches;
-        }
-        int activeBoxId = activeSession.getBox().getBoxId();
-        List<BoxBranch> onlyActive = new ArrayList<>(1);
-        for (BoxBranch branch : allBranches) {
-            if (branch.box().getBoxId() == activeBoxId) {
-                onlyActive.add(branch);
-                break;
-            }
-        }
-        return onlyActive;
+        return allBranches;
     }
 
 
@@ -605,8 +594,17 @@ public class MainController {
                     }
 
                     Document.Status status = resolveBadgeStatus(item);
-                    applyBadge(badgeLabel, status);
-                    
+                    if (item.kind() == SidebarNode.Kind.BOX
+                            && activeSession != null
+                            && item.box().getBoxId() == activeSession.getBox().getBoxId()) {
+                        badgeLabel.setVisible(true);
+                        badgeLabel.setManaged(true);
+                        badgeLabel.setText("● LIVE");
+                        badgeLabel.getStyleClass().setAll("status-badge", "active-session-badge");
+                    } else {
+                        applyBadge(badgeLabel, status);
+                    }
+
                     setText(null);
                     setGraphic(container);
                     setContextMenu(buildContextMenu(item));
@@ -1190,8 +1188,12 @@ public class MainController {
                 activeSession.getBox(),
                 new ArrayList<>()));
 
-        // Switch the sidebar to session-view: only the active box shows.
         renderForCurrentMode();
+        sidebarTree.refresh();
+        javafx.application.Platform.runLater(() -> {
+            TreeItem<SidebarNode> boxItem = findBoxItem(activeSession.getBox().getBoxId());
+            if (boxItem != null) boxItem.setExpanded(true);
+        });
 
         System.out.println("Session started — Box id "
                 + activeSession.getBox().getBoxName());

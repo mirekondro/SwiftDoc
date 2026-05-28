@@ -219,6 +219,10 @@
     -fx-font-size: 11px;
     -fx-font-weight: 900 !important; /* Ultra thick badge text */
 }
+.active-session-badge {
+    -fx-background-color: #24C79F;
+    -fx-text-fill: #FFFFFF !important;
+}
 .btn-primary:hover {
     -fx-background-color: #2DEBBB;
     -fx-effect: dropshadow(gaussian, rgba(36,199,159,0.3), 15, 0, 0, 6);
