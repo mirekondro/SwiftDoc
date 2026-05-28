@@ -439,7 +439,22 @@ public class MainController {
     }
 
     private void applySidebarTree(List<BoxBranch> branches) {
-        this.allBranches = new ArrayList<>(branches);
+        List<BoxBranch> merged = new ArrayList<>(branches);
+
+        // If a scan session is active, the in-memory BoxBranch is canonical
+        // (it has all docs/files added during the session). Replace any stale
+        // snapshot version with the in-memory one, and add it back if missing.
+        if (activeSession != null) {
+            int activeBoxId = activeSession.getBox().getBoxId();
+            BoxBranch inMemory = allBranches.stream()
+                    .filter(b -> b.box().getBoxId() == activeBoxId)
+                    .findFirst()
+                    .orElse(new BoxBranch(activeSession.getBox(), new ArrayList<>()));
+            merged.removeIf(b -> b.box().getBoxId() == activeBoxId);
+            merged.add(inMemory);
+        }
+
+        this.allBranches = merged;
         renderForCurrentMode();
     }
     private void renderTree(List<BoxBranch> branches) {
@@ -451,7 +466,18 @@ public class MainController {
     }
 
     private List<BoxBranch> branchesForCurrentMode() {
-        return allBranches;
+        if (activeSession == null) {
+            return allBranches;
+        }
+        int activeBoxId = activeSession.getBox().getBoxId();
+        List<BoxBranch> only = new ArrayList<>(1);
+        for (BoxBranch b : allBranches) {
+            if (b.box().getBoxId() == activeBoxId) {
+                only.add(b);
+                break;
+            }
+        }
+        return only;
     }
 
 
