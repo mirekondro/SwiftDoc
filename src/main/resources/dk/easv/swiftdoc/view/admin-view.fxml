@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -17,33 +18,37 @@
       styleClass="app-root">
 
     <!-- SIDEBAR -->
-    <VBox styleClass="app-sidebar" minWidth="350.0" maxWidth="350.0">
+    <VBox styleClass="app-sidebar">
         <!-- Logo -->
         <VBox styleClass="sidebar-logo-container">
-            <ImageView fx:id="brandLogo" preserveRatio="true" fitHeight="40"/>
+            <ImageView fx:id="brandLogo" preserveRatio="true" fitHeight="32">
+                <image>
+                    <Image url="@../assets/logos/LogoBlue2H.png"/>
+                </image>
+            </ImageView>
         </VBox>
 
         <!-- Navigation -->
-        <VBox spacing="8.0" styleClass="sidebar-nav-container" VBox.vgrow="ALWAYS">
-            <Label text="Administration" styleClass="sidebar-section-title" style="-fx-text-fill: #FFFFFF;"/>
-            <Button text="Profiles" onAction="#onSelectProfiles" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-layer-group" iconSize="14"/></graphic>
+        <VBox styleClass="sidebar-nav-container" VBox.vgrow="ALWAYS">
+            <Label text="Administration" styleClass="sidebar-section-title"/>
+            <Button fx:id="btnProfiles" text="Profiles" onAction="#onSelectProfiles" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-layer-group" iconSize="16"/></graphic>
             </Button>
-            <Button text="Clients" onAction="#onSelectClients" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-building" iconSize="14"/></graphic>
+            <Button fx:id="btnClients" text="Clients" onAction="#onSelectClients" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-building" iconSize="16"/></graphic>
             </Button>
-            <Button text="Users" onAction="#onSelectUsers" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-users" iconSize="14"/></graphic>
+            <Button fx:id="btnUsers" text="Users" onAction="#onSelectUsers" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-users" iconSize="16"/></graphic>
             </Button>
-            <Button text="System Logs" onAction="#onSelectLogs" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-list-ul" iconSize="14"/></graphic>
+            <Button fx:id="btnLogs" text="System Logs" onAction="#onSelectLogs" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-list-ul" iconSize="16"/></graphic>
             </Button>
         </VBox>
 
         <!-- Bottom -->
-        <VBox spacing="8.0" styleClass="sidebar-nav-container">
-            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn btn-danger">
-                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="14"/></graphic>
+        <VBox styleClass="sidebar-nav-container">
+            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="16"/></graphic>
             </Button>
         </VBox>
     </VBox>
@@ -53,9 +58,9 @@
         
         <!-- Top Bar -->
         <HBox alignment="CENTER_LEFT" styleClass="workspace-top-bar">
-            <VBox HBox.hgrow="ALWAYS">
-                <Label text="Admin Dashboard" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: #0F172A;"/>
-                <Label fx:id="welcomeLabel" text="Manage your system settings" style="-fx-text-fill: #64748B;"/>
+            <VBox HBox.hgrow="ALWAYS" spacing="4.0">
+                <Label text="Admin Dashboard" style="-fx-font-size: 28px; -fx-font-weight: 800; -fx-text-fill: #1F2937; -fx-padding: 0;"/>
+                <Label fx:id="welcomeLabel" text="Signed in as admin (ADMIN)" style="-fx-text-fill: #64748B; -fx-font-size: 14px; -fx-padding: 0;"/>
             </VBox>
         </HBox>
 

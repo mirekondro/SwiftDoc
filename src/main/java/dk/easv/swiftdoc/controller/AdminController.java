@@ -22,17 +22,42 @@ public class AdminController {
     @FXML private TabPane adminTabPane;
     @FXML private UserManagementController userManagementController;
 
+    @FXML private Button btnProfiles;
+    @FXML private Button btnClients;
+    @FXML private Button btnUsers;
+    @FXML private Button btnLogs;
+
     private User currentUser;
     private Runnable onLogout;
 
     @FXML
-    private void onSelectProfiles() { adminTabPane.getSelectionModel().select(0); }
+    private void onSelectProfiles() { 
+        adminTabPane.getSelectionModel().select(0);
+        updateActiveButton(btnProfiles);
+    }
     @FXML
-    private void onSelectClients() { adminTabPane.getSelectionModel().select(1); }
+    private void onSelectClients() { 
+        adminTabPane.getSelectionModel().select(1);
+        updateActiveButton(btnClients);
+    }
     @FXML
-    private void onSelectUsers() { adminTabPane.getSelectionModel().select(2); }
+    private void onSelectUsers() { 
+        adminTabPane.getSelectionModel().select(2);
+        updateActiveButton(btnUsers);
+    }
     @FXML
-    private void onSelectLogs() { adminTabPane.getSelectionModel().select(3); }
+    private void onSelectLogs() { 
+        adminTabPane.getSelectionModel().select(3);
+        updateActiveButton(btnLogs);
+    }
+
+    private void updateActiveButton(Button activeBtn) {
+        btnProfiles.getStyleClass().remove("btn-sidebar-active");
+        btnClients.getStyleClass().remove("btn-sidebar-active");
+        btnUsers.getStyleClass().remove("btn-sidebar-active");
+        btnLogs.getStyleClass().remove("btn-sidebar-active");
+        activeBtn.getStyleClass().add("btn-sidebar-active");
+    }
 
     @FXML
     private void initialize() {

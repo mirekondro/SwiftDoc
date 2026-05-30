@@ -181,6 +181,20 @@ public class ProfileManagementController {
     }
 
     @FXML
+    private void onRotationDecrement() {
+        if (rotationSpinner.getValueFactory() != null) {
+            rotationSpinner.getValueFactory().decrement(90);
+        }
+    }
+
+    @FXML
+    private void onRotationIncrement() {
+        if (rotationSpinner.getValueFactory() != null) {
+            rotationSpinner.getValueFactory().increment(90);
+        }
+    }
+
+    @FXML
     private void onSaveClicked() {
         String name = nameField.getText();
         Client client = clientCombo.getValue();
