@@ -38,16 +38,20 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import dk.easv.swiftdoc.service.ExportService;
 import dk.easv.swiftdoc.service.ExportService.ExportResult;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public class MainController {
 
@@ -62,6 +66,7 @@ public class MainController {
 
     public void setCurrentUser(User user) {
         this.currentUser = user;
+        loadSidebarTreeAsync();
     }
 
     public void setOnLogout(Runnable callback) {
@@ -82,7 +87,7 @@ public class MainController {
     private static final double ZOOM_MAX = 8.0;
     private double zoomFactor = 1.0;
 
-    @FXML private VBox root;
+    @FXML private HBox root;
     @FXML private Button scanButton;
     @FXML private Button finishSessionButton;
     @FXML private Label sessionInfoLabel;
@@ -90,8 +95,10 @@ public class MainController {
     @FXML private Label lastResultLabel;
     @FXML private Label viewerCaptionLabel;
     @FXML private ImageView pageImageView;
+    @FXML private ImageView brandLogo;
     @FXML private TreeView<SidebarNode> sidebarTree;
-    @FXML private ToggleButton themeToggle;
+    @FXML private ScrollPane viewerScrollPane;
+    @FXML private StackPane viewerStack;
 
     /**
      * Wrapper for tree node values. Each node holds either a Box, a Document,
@@ -113,9 +120,11 @@ public class MainController {
         @Override
         public String toString() {
             return switch (kind) {
-                case BOX -> "\uD83D\uDCC2 Box #" + box.getBoxId();
-                case DOCUMENT -> "\uD83D\uDCC4 " + document.toString();
-                case FILE -> "\uD83D\uDCC3 File #" + file.getReferenceId();
+                case BOX -> (box.getBoxName() != null && !box.getBoxName().isBlank())
+                        ? box.getBoxName()
+                        : "Box #" + box.getBoxId();
+                case DOCUMENT -> document.toString();
+                case FILE -> "File #" + file.getIncrementalId();
             };
         }
     }
@@ -124,14 +133,39 @@ public class MainController {
     private void initialize() {
         Platform.runLater(() -> root.requestFocus());
 
-        // Sidebar tree setup — invisible root, populated below.
+        // Re-fit image whenever the viewer viewport is resized
+        viewerScrollPane.viewportBoundsProperty().addListener((obs, o, n) -> updateViewerLayout());
+
+        // Brand logo
+        updateBrandLogo();
+
+        // Sidebar tree setup — invisible root, data loaded after setCurrentUser.
         sidebarTree.setRoot(new TreeItem<>(null));
-        loadSidebarTreeAsync();
         configureSidebarDragAndDrop();
         sidebarSearchField.textProperty().addListener((obs, oldVal, newVal) -> filterTree(newVal));
 
         sidebarTree.getSelectionModel().selectedItemProperty()
                 .addListener((obs, oldSel, newSel) -> onSidebarSelectionChanged(newSel));
+    }
+
+    private void updateBrandLogo() {
+        if (brandLogo == null) {
+            return;
+        }
+        Image image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/LogoBlue2H.png");
+        if (image == null) {
+            image = loadLogoImage("/dk/easv/swiftdoc/assets/logos/WeblagerLightBLue.png");
+        }
+        brandLogo.setImage(image);
+    }
+
+    private Image loadLogoImage(String classpath) {
+        try {
+            var url = MainController.class.getResource(classpath);
+            return url != null ? new Image(url.toExternalForm()) : null;
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     @FXML
@@ -160,6 +194,7 @@ public class MainController {
             });
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(pane);
             dialog.setTitle("Custom Rotation");
             dialog.showAndWait();
@@ -200,26 +235,24 @@ public class MainController {
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Delete File");
-        confirm.setHeaderText("Delete File #" + currentlyDisplayedFile.getReferenceId() + "?");
+        confirm.setHeaderText("Delete File #" + currentlyDisplayedFile.getIncrementalId() + "?");
         confirm.setContentText("This action cannot be undone.");
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
 
         File toDelete = currentlyDisplayedFile;
-        try {
-            fileDAO.delete(toDelete.getFileId(), toDelete.getDocumentId(),
-                    currentUser.getUserId(), currentUser.getUsername());
-            removeFileFromTree(toDelete);
-            currentlyDisplayedFile = null;
-            pageImageView.setImage(null);
-            viewerCaptionLabel.setText("No page to display yet");
-        } catch (SQLException ex) {
-            Alert error = new Alert(Alert.AlertType.ERROR);
-            error.setTitle("Error");
-            error.setHeaderText("Could not delete file");
-            error.setContentText(ex.getMessage());
-            error.showAndWait();
-        }
+        currentlyDisplayedFile = null;
+        pageImageView.setImage(null);
+        viewerCaptionLabel.setText("No page to display yet");
+
+        runAsync("delete-file-worker",
+                () -> fileDAO.delete(toDelete.getFileId(), toDelete.getDocumentId(),
+                        currentUser.getUserId(), currentUser.getUsername()),
+                () -> removeFileFromTree(toDelete),
+                ex -> {
+                    currentlyDisplayedFile = toDelete;
+                    showSqlError("Error", "Could not delete file", ex);
+                });
     }
 
     private void removeFileFromTree(File file) {
@@ -255,21 +288,47 @@ public class MainController {
     }
 
     private void applyZoom(double newZoom) {
-        double clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
-        zoomFactor = clamped;
-        pageImageView.setScaleX(clamped);
-        pageImageView.setScaleY(clamped);
+        zoomFactor = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom));
+        updateViewerLayout();
     }
 
     private void resetZoom() {
         zoomFactor = 1.0;
-        pageImageView.setScaleX(1.0);
-        pageImageView.setScaleY(1.0);
+        updateViewerLayout();
+    }
+
+    private void updateViewerLayout() {
+        if (pageImageView.getImage() == null) return;
+        javafx.geometry.Bounds vp = viewerScrollPane.getViewportBounds();
+        double vw = vp.getWidth();
+        double vh = vp.getHeight();
+        if (vw <= 0 || vh <= 0) return;
+
+        double imgW = pageImageView.getImage().getWidth();
+        double imgH = pageImageView.getImage().getHeight();
+        double baseScale = Math.min(vw / imgW, vh / imgH);
+        double fitW = imgW * baseScale * zoomFactor;
+        double fitH = imgH * baseScale * zoomFactor;
+
+        pageImageView.setFitWidth(fitW);
+        pageImageView.setFitHeight(fitH);
+
+        // Keep StackPane large enough to center image when smaller than viewport
+        double stackW = Math.max(vw, fitW);
+        double stackH = Math.max(vh, fitH);
+        viewerStack.setMinSize(stackW, stackH);
+        viewerStack.setPrefSize(stackW, stackH);
     }
 
     @FXML
     private void onKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
+
+        if (event.isShiftDown() && code == KeyCode.S) {
+            onShowShortcutsCommand();
+            event.consume();
+            return;
+        }
 
         if (code == KeyCode.F1) {
             onNewCommand();
@@ -350,7 +409,7 @@ public class MainController {
      */
     private void loadSidebarTree() {
         try {
-            List<BoxBranch> branches = sidebarService.loadTree();
+            List<BoxBranch> branches = sidebarService.loadTreeForUser(currentUser.getUserId());
             applySidebarTree(branches);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -364,24 +423,31 @@ public class MainController {
                 && (lastResultLabel.getText() == null || lastResultLabel.getText().isBlank())) {
             lastResultLabel.setText("Loading sidebar...");
         }
-        Thread worker = new Thread(() -> {
-            try {
-                List<BoxBranch> branches = sidebarService.loadTree();
-                Platform.runLater(() -> applySidebarTree(branches));
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
-                    sidebarTree.setRoot(new TreeItem<>(null));
-                    System.err.println("Could not load sidebar tree: " + ex.getMessage());
-                });
-            }
-        }, "sidebar-load-tree");
-        worker.setDaemon(true);
-        worker.start();
+        @SuppressWarnings("unchecked")
+        List<BoxBranch>[] holder = new List[1];
+        runAsync("sidebar-load-tree",
+                () -> holder[0] = sidebarService.loadTreeForUser(currentUser.getUserId()),
+                () -> applySidebarTree(holder[0]),
+                ex -> sidebarTree.setRoot(new TreeItem<>(null)));
     }
 
     private void applySidebarTree(List<BoxBranch> branches) {
-        this.allBranches = new ArrayList<>(branches);
+        List<BoxBranch> merged = new ArrayList<>(branches);
+
+        // If a scan session is active, the in-memory BoxBranch is canonical
+        // (it has all docs/files added during the session). Replace any stale
+        // snapshot version with the in-memory one, and add it back if missing.
+        if (activeSession != null) {
+            int activeBoxId = activeSession.getBox().getBoxId();
+            BoxBranch inMemory = allBranches.stream()
+                    .filter(b -> b.box().getBoxId() == activeBoxId)
+                    .findFirst()
+                    .orElse(new BoxBranch(activeSession.getBox(), new ArrayList<>()));
+            merged.removeIf(b -> b.box().getBoxId() == activeBoxId);
+            merged.add(inMemory);
+        }
+
+        this.allBranches = merged;
         renderForCurrentMode();
     }
     private void renderTree(List<BoxBranch> branches) {
@@ -397,14 +463,14 @@ public class MainController {
             return allBranches;
         }
         int activeBoxId = activeSession.getBox().getBoxId();
-        List<BoxBranch> onlyActive = new ArrayList<>(1);
-        for (BoxBranch branch : allBranches) {
-            if (branch.box().getBoxId() == activeBoxId) {
-                onlyActive.add(branch);
+        List<BoxBranch> only = new ArrayList<>(1);
+        for (BoxBranch b : allBranches) {
+            if (b.box().getBoxId() == activeBoxId) {
+                only.add(b);
                 break;
             }
         }
-        return onlyActive;
+        return only;
     }
 
 
@@ -508,15 +574,20 @@ public class MainController {
 
     private boolean fileMatches(File file, String needle) {
         if (file == null) return false;
-        return ("file #" + file.getReferenceId()).contains(needle);
+        return ("file #" + file.getIncrementalId()).contains(needle);
     }
 
     private void configureSidebarDragAndDrop() {
         sidebarTree.setCellFactory(treeView -> {
             TreeCell<SidebarNode> cell = new TreeCell<>() {
+                private final FontIcon kindIcon = new FontIcon();
                 private final Label textLabel = new Label();
                 private final Label badgeLabel = new Label();
-                private final HBox container = new HBox(6, textLabel, badgeLabel);
+                private final HBox container = new HBox(10, kindIcon, textLabel, badgeLabel);
+
+                {
+                    container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                }
 
                 @Override
                 protected void updateItem(SidebarNode item, boolean empty) {
@@ -527,11 +598,32 @@ public class MainController {
                         setContextMenu(null);
                         return;
                     }
+                    
                     container.getStyleClass().setAll("sidebar-cell");
                     textLabel.getStyleClass().setAll("sidebar-cell-text");
                     textLabel.setText(item.toString());
+                    
+                    // Set appropriate icon
+                    kindIcon.setIconColor(javafx.scene.paint.Color.WHITE);
+                    kindIcon.setIconSize(16);
+                    switch (item.kind()) {
+                        case BOX -> kindIcon.setIconLiteral("fas-archive");
+                        case DOCUMENT -> kindIcon.setIconLiteral("fas-folder-open");
+                        case FILE -> kindIcon.setIconLiteral("fas-file-alt");
+                    }
+
                     Document.Status status = resolveBadgeStatus(item);
-                    applyBadge(badgeLabel, status);
+                    if (item.kind() == SidebarNode.Kind.BOX
+                            && activeSession != null
+                            && item.box().getBoxId() == activeSession.getBox().getBoxId()) {
+                        badgeLabel.setVisible(true);
+                        badgeLabel.setManaged(true);
+                        badgeLabel.setText("● LIVE");
+                        badgeLabel.getStyleClass().setAll("status-badge", "active-session-badge");
+                    } else {
+                        applyBadge(badgeLabel, status);
+                    }
+
                     setText(null);
                     setGraphic(container);
                     setContextMenu(buildContextMenu(item));
@@ -540,14 +632,25 @@ public class MainController {
 
             cell.setOnDragDetected(event -> {
                 TreeItem<SidebarNode> item = cell.getTreeItem();
-                if (!isFileItem(item)) {
+                if (!isFileItem(item) && !isDocumentItem(item)) {
                     return;
                 }
                 Dragboard dragboard = cell.startDragAndDrop(TransferMode.MOVE);
                 ClipboardContent content = new ClipboardContent();
-                content.putString(Integer.toString(item.getValue().file().getFileId()));
+                if (isFileItem(item)) {
+                    content.putString("FILE:" + item.getValue().file().getFileId());
+                } else {
+                    content.putString("DOC:" + item.getValue().document().getDocumentId());
+                }
                 dragboard.setContent(content);
+
+                javafx.scene.SnapshotParameters snapParams = new javafx.scene.SnapshotParameters();
+                snapParams.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                dragboard.setDragView(cell.snapshot(snapParams, null),
+                        event.getX(), event.getY());
+
                 draggedTreeItem = item;
+                cell.getStyleClass().add("drag-source");
                 event.consume();
             });
 
@@ -556,27 +659,73 @@ public class MainController {
                     return;
                 }
                 TreeItem<SidebarNode> target = cell.getTreeItem();
+                clearCellDropStyles(cell);
                 if (isValidDropTarget(draggedTreeItem, target)) {
                     event.acceptTransferModes(TransferMode.MOVE);
+                    applyDropIndicator(cell, target, event.getY());
                 }
                 event.consume();
             });
 
+            cell.setOnDragExited(event -> clearCellDropStyles(cell));
+
             cell.setOnDragDropped(event -> {
+                clearCellDropStyles(cell);
                 if (draggedTreeItem == null) {
                     return;
                 }
                 TreeItem<SidebarNode> target = cell.getTreeItem();
                 boolean completed = false;
                 if (isValidDropTarget(draggedTreeItem, target)) {
-                    completed = moveDraggedFile(target);
+                    if (isFileItem(draggedTreeItem)) {
+                        completed = moveDraggedFile(target);
+                    } else if (isDocumentItem(draggedTreeItem)) {
+                        completed = mergeDraggedDocument(target);
+                    }
                 }
                 event.setDropCompleted(completed);
                 event.consume();
             });
 
-            cell.setOnDragDone(event -> draggedTreeItem = null);
+            cell.setOnDragDone(event -> {
+                cell.getStyleClass().remove("drag-source");
+                clearAllDropStyles();
+                draggedTreeItem = null;
+            });
             return cell;
+        });
+    }
+
+    /**
+     * Apply a visible drop indicator on the cell based on what is being dragged.
+     *   - File reorder within same doc: insertion line above or below target
+     *   - File move into another doc, or doc merge: green highlight on target
+     */
+    private void applyDropIndicator(TreeCell<SidebarNode> cell,
+                                    TreeItem<SidebarNode> target,
+                                    double pointerY) {
+        if (isFileItem(draggedTreeItem) && isFileItem(target)) {
+            TreeItem<SidebarNode> sourceDoc = draggedTreeItem.getParent();
+            TreeItem<SidebarNode> targetDoc = target.getParent();
+            if (sourceDoc == targetDoc) {
+                cell.getStyleClass().add(pointerY < cell.getHeight() / 2.0
+                        ? "drop-above" : "drop-below");
+            } else {
+                cell.getStyleClass().add("drop-into");
+            }
+            return;
+        }
+        cell.getStyleClass().add("drop-into");
+    }
+
+    private void clearCellDropStyles(TreeCell<SidebarNode> cell) {
+        cell.getStyleClass().removeAll("drop-above", "drop-below", "drop-into");
+    }
+
+    private void clearAllDropStyles() {
+        if (sidebarTree == null) return;
+        sidebarTree.lookupAll(".tree-cell").forEach(node -> {
+            node.getStyleClass().removeAll("drop-above", "drop-below", "drop-into", "drag-source");
         });
     }
 
@@ -610,24 +759,13 @@ public class MainController {
         doc.setStatus(status);
         sidebarTree.refresh();
 
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.updateDocumentStatus(doc.getDocumentId(), status);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
+        runAsync("sidebar-update-status",
+                () -> sidebarService.updateDocumentStatus(doc.getDocumentId(), status),
+                ex -> {
                     doc.setStatus(previous);
                     sidebarTree.refresh();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Status update failed");
-                    alert.setHeaderText("Could not update document status");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Status update failed", "Could not update document status", ex);
                 });
-            }
-        }, "sidebar-update-status");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private Document.Status resolveBadgeStatus(SidebarNode node) {
@@ -737,6 +875,8 @@ public class MainController {
             siblings.remove(draggedTreeItem);
             siblings.add(dropIndex, draggedTreeItem);
             persistDocumentOrderAsync(sourceDocItem);
+            sidebarTree.refresh();
+            refreshViewerCaption();
             return true;
         }
 
@@ -758,7 +898,20 @@ public class MainController {
         File movedFile = draggedTreeItem.getValue().file();
         movedFile.setDocumentId(targetDocItem.getValue().document().getDocumentId());
         persistCrossDocumentMoveAsync(sourceDocItem, targetDocItem, movedFile);
+        sidebarTree.refresh();
+        refreshViewerCaption();
         return true;
+    }
+
+    /** Update the viewer caption if the currently displayed file's number changed. */
+    private void refreshViewerCaption() {
+        if (currentlyDisplayedFile == null) return;
+        viewerCaptionLabel.setText(
+                "File #" + currentlyDisplayedFile.getIncrementalId()
+                        + " — Document " + currentlyDisplayedFile.getDocumentId()
+                        + (currentlyDisplayedFile.getRotationAngle() != 0
+                        ? "  ·  " + currentlyDisplayedFile.getRotationAngle() + "°"
+                        : ""));
     }
 
     private TreeItem<SidebarNode> resolveTargetDocument(TreeItem<SidebarNode> target) {
@@ -772,21 +925,140 @@ public class MainController {
     }
 
     private boolean isValidDropTarget(TreeItem<SidebarNode> dragged, TreeItem<SidebarNode> target) {
-        if (!isFileItem(dragged) || target == null || target == dragged) {
+        if (dragged == null || target == null || target == dragged) {
             return false;
         }
-        TreeItem<SidebarNode> sourceDoc = dragged.getParent();
-        if (!isDocumentItem(sourceDoc)) {
+        if (isFileItem(dragged)) {
+            TreeItem<SidebarNode> sourceDoc = dragged.getParent();
+            if (!isDocumentItem(sourceDoc)) {
+                return false;
+            }
+            TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+            if (!isDocumentItem(targetDoc)) {
+                return false;
+            }
+            if (sourceDoc == targetDoc) {
+                return true;
+            }
+            return isSameBox(sourceDoc, targetDoc);
+        }
+        if (isDocumentItem(dragged)) {
+            TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
+            if (!isDocumentItem(targetDoc) || targetDoc == dragged) {
+                return false;
+            }
+            // Don't allow merging the active session's placeholder/current document.
+            if (activeSession != null) {
+                int activeDocId = activeSession.getCurrentDocument() == null ? -1
+                        : activeSession.getCurrentDocument().getDocumentId();
+                int draggedId = dragged.getValue().document().getDocumentId();
+                int targetId = targetDoc.getValue().document().getDocumentId();
+                if (draggedId == activeDocId || targetId == activeDocId) {
+                    return false;
+                }
+            }
+            return isSameBox(dragged, targetDoc);
+        }
+        return false;
+    }
+
+    private boolean mergeDraggedDocument(TreeItem<SidebarNode> target) {
+        TreeItem<SidebarNode> sourceDocItem = draggedTreeItem;
+        TreeItem<SidebarNode> targetDocItem = resolveTargetDocument(target);
+        if (!isDocumentItem(sourceDocItem) || !isDocumentItem(targetDocItem)
+                || sourceDocItem == targetDocItem) {
             return false;
         }
-        TreeItem<SidebarNode> targetDoc = resolveTargetDocument(target);
-        if (!isDocumentItem(targetDoc)) {
+
+        Document sourceDoc = sourceDocItem.getValue().document();
+        Document targetDoc = targetDocItem.getValue().document();
+        String mergedBarcode = combineBarcodes(targetDoc.getBarcodeValue(), sourceDoc.getBarcodeValue());
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Merge documents");
+        confirm.setHeaderText("Merge \"" + sourceDoc + "\" into \"" + targetDoc + "\"?");
+        confirm.setContentText("All pages from the source document will be appended "
+                + "to the target. The source document will be deleted.\n\n"
+                + "Merged name: " + (mergedBarcode == null ? "(no barcode)" : mergedBarcode));
+        Optional<ButtonType> choice = confirm.showAndWait();
+        if (choice.isEmpty() || choice.get() != ButtonType.OK) {
             return false;
         }
-        if (sourceDoc == targetDoc) {
-            return true;
+
+        applyMergeInMemory(sourceDocItem, targetDocItem, mergedBarcode);
+        persistMergeAsync(sourceDoc.getDocumentId(), targetDoc.getDocumentId(), mergedBarcode);
+        return true;
+    }
+
+    private String combineBarcodes(String targetBarcode, String sourceBarcode) {
+        boolean tBlank = targetBarcode == null || targetBarcode.isBlank();
+        boolean sBlank = sourceBarcode == null || sourceBarcode.isBlank();
+        if (tBlank && sBlank) return null;
+        if (tBlank) return sourceBarcode.trim();
+        if (sBlank) return targetBarcode.trim();
+        return targetBarcode.trim() + " + " + sourceBarcode.trim();
+    }
+
+    /**
+     * Apply the merge to the in-memory model and the tree:
+     *   - move source's files into target (in-memory list + tree children)
+     *   - update target document's barcode value
+     *   - remove source document from box branch + tree
+     */
+    private void applyMergeInMemory(TreeItem<SidebarNode> sourceDocItem,
+                                    TreeItem<SidebarNode> targetDocItem,
+                                    String mergedBarcode) {
+        Document sourceDoc = sourceDocItem.getValue().document();
+        Document targetDoc = targetDocItem.getValue().document();
+        int boxId = targetDoc.getBoxId();
+
+        targetDoc.setBarcodeValue(mergedBarcode);
+
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() != boxId) continue;
+            DocumentBranch sourceBranch = null;
+            DocumentBranch targetBranch = null;
+            for (DocumentBranch db : boxBranch.documents()) {
+                if (db.document().getDocumentId() == sourceDoc.getDocumentId()) sourceBranch = db;
+                if (db.document().getDocumentId() == targetDoc.getDocumentId()) targetBranch = db;
+            }
+            if (sourceBranch != null && targetBranch != null) {
+                List<File> mergedFiles = new ArrayList<>(targetBranch.files());
+                int nextIncremental = mergedFiles.size() + 1;
+                for (File f : sourceBranch.files()) {
+                    f.setDocumentId(targetDoc.getDocumentId());
+                    f.setIncrementalId(nextIncremental++);
+                    mergedFiles.add(f);
+                }
+                int targetIdx = boxBranch.documents().indexOf(targetBranch);
+                boxBranch.documents().set(targetIdx, new DocumentBranch(targetDoc, mergedFiles));
+                boxBranch.documents().remove(sourceBranch);
+            }
+            break;
         }
-        return isSameBox(sourceDoc, targetDoc);
+
+        // Tree: move children, update target SidebarNode, remove source item.
+        List<TreeItem<SidebarNode>> sourceChildren = new ArrayList<>(sourceDocItem.getChildren());
+        sourceDocItem.getChildren().clear();
+        targetDocItem.getChildren().addAll(sourceChildren);
+        targetDocItem.setValue(SidebarNode.forDocument(targetDoc));
+        targetDocItem.setExpanded(true);
+
+        TreeItem<SidebarNode> sourceBoxItem = sourceDocItem.getParent();
+        if (sourceBoxItem != null) {
+            sourceBoxItem.getChildren().remove(sourceDocItem);
+        }
+        sidebarTree.refresh();
+    }
+
+    private void persistMergeAsync(int sourceDocId, int targetDocId, String mergedBarcode) {
+        runAsync("sidebar-merge-worker",
+                () -> sidebarService.mergeDocuments(sourceDocId, targetDocId, mergedBarcode),
+                ex -> {
+                    showSqlError("Merge failed", "Could not merge documents",
+                            ex.getMessage() + "\n\nReloading sidebar to reflect actual state.");
+                    loadSidebarTreeAsync();
+                });
     }
 
     private boolean isSameBox(TreeItem<SidebarNode> sourceDocItem, TreeItem<SidebarNode> targetDocItem) {
@@ -801,6 +1073,25 @@ public class MainController {
                 && sourceValue.kind() == SidebarNode.Kind.BOX
                 && targetValue.kind() == SidebarNode.Kind.BOX
                 && sourceValue.box().getBoxId() == targetValue.box().getBoxId();
+    }
+
+    /**
+     * Replace the in-memory DocumentBranch's file list with the new order so
+     * that a re-render (e.g. after a stale snapshot lands) keeps the order.
+     */
+    private void syncInMemoryFileOrder(TreeItem<SidebarNode> docItem, List<File> orderedFiles) {
+        if (!isDocumentItem(docItem)) return;
+        int docId = docItem.getValue().document().getDocumentId();
+        for (BoxBranch boxBranch : allBranches) {
+            List<DocumentBranch> docs = boxBranch.documents();
+            for (int i = 0; i < docs.size(); i++) {
+                DocumentBranch db = docs.get(i);
+                if (db.document().getDocumentId() == docId) {
+                    docs.set(i, new DocumentBranch(db.document(), new ArrayList<>(orderedFiles)));
+                    return;
+                }
+            }
+        }
     }
 
     private List<File> collectOrderedFiles(TreeItem<SidebarNode> documentItem) {
@@ -819,30 +1110,17 @@ public class MainController {
 
     private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
         List<File> orderedFiles = collectOrderedFiles(documentItem);
-
         if (orderedFiles.isEmpty()) {
             return;
         }
-
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.updateFileOrder(
-                        documentItem.getValue().document().getDocumentId(),
-                        orderedFiles);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
+        syncInMemoryFileOrder(documentItem, orderedFiles);
+        runAsync("sidebar-reorder-worker",
+                () -> sidebarService.updateFileOrder(
+                        documentItem.getValue().document().getDocumentId(), orderedFiles),
+                ex -> {
                     loadSidebarTree();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Reorder failed");
-                    alert.setHeaderText("Could not save file order");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Reorder failed", "Could not save file order", ex);
                 });
-            }
-        }, "sidebar-reorder-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private void persistCrossDocumentMoveAsync(TreeItem<SidebarNode> sourceDocItem,
@@ -850,29 +1128,19 @@ public class MainController {
                                               File movedFile) {
         List<File> sourceOrdered = collectOrderedFiles(sourceDocItem);
         List<File> targetOrdered = collectOrderedFiles(targetDocItem);
+        syncInMemoryFileOrder(sourceDocItem, sourceOrdered);
+        syncInMemoryFileOrder(targetDocItem, targetOrdered);
 
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.moveFileAcrossDocuments(
+        runAsync("sidebar-move-worker",
+                () -> sidebarService.moveFileAcrossDocuments(
                         movedFile.getFileId(),
                         sourceDocItem.getValue().document().getDocumentId(),
                         targetDocItem.getValue().document().getDocumentId(),
-                        sourceOrdered,
-                        targetOrdered);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
+                        sourceOrdered, targetOrdered),
+                ex -> {
                     loadSidebarTree();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Move failed");
-                    alert.setHeaderText("Could not move file");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Move failed", "Could not move file", ex);
                 });
-            }
-        }, "sidebar-move-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private boolean isFileItem(TreeItem<SidebarNode> item) {
@@ -890,7 +1158,9 @@ public class MainController {
         for (DocumentBranch docBranch : branch.documents()) {
             boxItem.getChildren().add(buildDocumentItem(docBranch));
         }
-        boxItem.setExpanded(false);
+        boolean isActive = activeSession != null
+                && activeSession.getBox().getBoxId() == branch.box().getBoxId();
+        boxItem.setExpanded(isActive);
         return boxItem;
     }
 
@@ -966,14 +1236,14 @@ public class MainController {
      * DB call runs on a background thread; UI update on FX thread.
      */
     private void loadAndDisplayFile(File file) {
-        viewerCaptionLabel.setText("Loading File #" + file.getReferenceId() + "...");
+        viewerCaptionLabel.setText("Loading File #" + file.getIncrementalId() + "...");
 
         Thread worker = new Thread(() -> {
             try {
                 byte[] tiffBytes = sidebarService.loadTiffData(file.getFileId());
                 if (tiffBytes == null || tiffBytes.length == 0) {
                     Platform.runLater(() -> viewerCaptionLabel.setText(
-                            "File #" + file.getReferenceId() + " has no data."));
+                            "File #" + file.getIncrementalId() + " has no data."));
                     return;
                 }
                 Image image = tiffImageLoader.load(tiffBytes);
@@ -983,7 +1253,7 @@ public class MainController {
                     pageImageView.setRotate(file.getRotationAngle());
                     resetZoom();
                     viewerCaptionLabel.setText(
-                            "File #" + file.getReferenceId()
+                            "File #" + file.getIncrementalId()
                                     + " — Document " + file.getDocumentId()
                                     + (file.getRotationAngle() != 0
                                     ? "  ·  " + file.getRotationAngle() + "°"
@@ -992,7 +1262,7 @@ public class MainController {
             } catch (SQLException | IOException ex) {
                 ex.printStackTrace();
                 Platform.runLater(() -> viewerCaptionLabel.setText(
-                        "Could not load File #" + file.getReferenceId()
+                        "Could not load File #" + file.getIncrementalId()
                                 + ": " + ex.getMessage()));
             }
         }, "sidebar-load-worker");
@@ -1044,6 +1314,37 @@ public class MainController {
         }
     }
 
+    /**
+     * Update an existing document node when the first barcode rewrites a
+     * placeholder document: refresh the SidebarNode (new barcode value) and
+     * append the barcode file as the next child.
+     */
+    private void rewriteDocumentNode(TreeItem<SidebarNode> docItem, Document updatedDoc, File barcodeFile) {
+        docItem.setValue(SidebarNode.forDocument(updatedDoc));
+
+        for (BoxBranch boxBranch : allBranches) {
+            if (boxBranch.box().getBoxId() == updatedDoc.getBoxId()) {
+                for (int i = 0; i < boxBranch.documents().size(); i++) {
+                    DocumentBranch db = boxBranch.documents().get(i);
+                    if (db.document().getDocumentId() == updatedDoc.getDocumentId()) {
+                        List<File> files = new ArrayList<>(db.files());
+                        if (barcodeFile != null) {
+                            files.add(barcodeFile);
+                        }
+                        boxBranch.documents().set(i, new DocumentBranch(updatedDoc, files));
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (barcodeFile != null) {
+            docItem.getChildren().add(new TreeItem<>(SidebarNode.forFile(barcodeFile)));
+        }
+        docItem.setExpanded(true);
+    }
+
     private TreeItem<SidebarNode> findBoxItem(int boxId) {
         for (TreeItem<SidebarNode> boxItem : sidebarTree.getRoot().getChildren()) {
             SidebarNode value = boxItem.getValue();
@@ -1080,6 +1381,7 @@ public class MainController {
             dialogController.setCurrentUser(currentUser);
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(dialogPane);
             dialog.setTitle("New Scan");
             dialog.showAndWait();
@@ -1088,10 +1390,8 @@ public class MainController {
             if (started != null) {
                 this.activeSession = started;
                 onSessionStarted();
-            } else {
-                System.out.println("New Scan cancelled — no session started.");
             }
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             System.err.println("Failed to load new scan dialog: " + ex.getMessage());
             ex.printStackTrace();
         }
@@ -1109,19 +1409,18 @@ public class MainController {
         pageImageView.setImage(null);
         resetZoom();
 
-        // Add the new box to the in-memory model so it's available when we
-        // later return to history view.
+
         allBranches.add(new BoxBranch(
                 activeSession.getBox(),
-                new ArrayList<>(List.of(new DocumentBranch(
-                        activeSession.getFirstDocument(), new ArrayList<>())))));
+                new ArrayList<>()));
 
-        // Switch the sidebar to session-view: only the active box shows.
         renderForCurrentMode();
+        sidebarTree.refresh();
+        javafx.application.Platform.runLater(() -> {
+            TreeItem<SidebarNode> boxItem = findBoxItem(activeSession.getBox().getBoxId());
+            if (boxItem != null) boxItem.setExpanded(true);
+        });
 
-        System.out.println("Session started — Box id "
-                + activeSession.getBox().getBoxId()
-                + ", first Document id " + activeSession.getFirstDocument().getDocumentId());
     }
 
     @FXML
@@ -1211,33 +1510,42 @@ public class MainController {
             switch (r.kind()) {
                 case PAGE -> {
                     lastResultLabel.setText("Page saved as File #"
-                            + r.savedFile().getReferenceId()
+                            + r.savedFile().getIncrementalId()
                             + " (" + r.savedFile().getTiffData().length + " bytes)");
-                    System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
-                            + " in Document " + r.savedFile().getDocumentId());
-
                     showPageInViewer(
                             r.tiffBytes(),
-                            "File #" + r.savedFile().getReferenceId()
+                            "File #" + r.savedFile().getIncrementalId()
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );
-                    addFileToSidebar(r.savedFile());
+
+                    if (r.newDocument() != null) {
+                        addDocumentToSidebar(r.newDocument(), r.savedFile());
+                    } else {
+                        addFileToSidebar(r.savedFile());
+                    }
                 }
+
                 case DOCUMENT_SPLIT -> {
                     lastResultLabel.setText("Barcode \"" + r.barcodeValue()
-                            + "\" detected — new Document #"
-                            + r.newDocument().getDocumentNumber() + " started");
-                    System.out.println("SPLIT: barcode " + r.barcodeValue()
-                            + " → Document id " + r.newDocument().getDocumentId());
-
+                            + "\" detected — Document #"
+                            + r.newDocument().getDocumentNumber() + " (" + r.barcodeValue() + ")");
                     showPageInViewer(
                             r.tiffBytes(),
-                            "File #" + r.savedFile().getReferenceId()
+                            "File #" + r.savedFile().getIncrementalId()
                                     + " — Document " + r.savedFile().getDocumentId(),
                             r.savedFile()
                     );
-                    addDocumentToSidebar(r.newDocument(), r.savedFile());
+
+                    // If the document already exists in the sidebar (placeholder being
+                    // rewritten by the first barcode), refresh its label and append the
+                    // barcode file. Otherwise add the new document node.
+                    TreeItem<SidebarNode> existing = findDocumentItem(r.newDocument().getDocumentId());
+                    if (existing != null) {
+                        rewriteDocumentNode(existing, r.newDocument(), r.savedFile());
+                    } else {
+                        addDocumentToSidebar(r.newDocument(), r.savedFile());
+                    }
                 }
             }
         }
@@ -1304,35 +1612,24 @@ public class MainController {
         viewerCaptionLabel.setText("Rotation: " + newAngle + "°");
 
         // 2. Persist on a background thread.
-        final int fileId = file.getFileId();
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.updateFileRotation(fileId, newAngle);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
-                    // Roll back: restore previous angle in both model + viewer.
+        runAsync("sidebar-rotation-worker",
+                () -> sidebarService.updateFileRotation(file.getFileId(), newAngle),
+                ex -> {
                     file.setRotationAngle(previousAngle);
                     if (currentlyDisplayedFile == file) {
                         pageImageView.setRotate(previousAngle);
                     }
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Rotation failed");
-                    alert.setHeaderText("Could not save rotation");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Rotation failed", "Could not save rotation", ex);
                 });
-            }
-        }, "sidebar-rotation-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private void refreshSessionLabels() {
+        Document current = activeSession.getCurrentDocument();
+        String docLine = (current == null)
+                ? "Current document: none yet"
+                : "Current document: #" + current.getDocumentNumber();
         sessionInfoLabel.setText(
-                "Box #" + activeSession.getBox().getBoxId() + "\n"
-                        + "Current document: #"
-                        + activeSession.getCurrentDocument().getDocumentNumber());
+                "Box #" + activeSession.getBox().getBoxId() + "\n" + docLine);
         counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());
     }
 
@@ -1415,6 +1712,7 @@ public class MainController {
             applyDialogTheme(pane);
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(pane);
             dialog.setTitle("Keyboard Shortcuts");
             dialog.showAndWait();
@@ -1439,6 +1737,7 @@ public class MainController {
             ExportDialogController dialogController = loader.getController();
 
             Dialog<?> dialog = new Dialog<>();
+            dialog.initOwner(root.getScene().getWindow());
             dialog.setDialogPane(dialogPane);
             dialog.setTitle("Export");
             dialog.showAndWait();
@@ -1625,29 +1924,40 @@ public class MainController {
     }
 
 
-    @FXML
-    private void onThemeToggle() {
-        boolean darkMode = themeToggle != null && themeToggle.isSelected();
-        applyTheme(darkMode);
+    @FunctionalInterface
+    private interface SqlWork {
+        void execute() throws SQLException;
     }
 
-    private void applyTheme(boolean darkMode) {
-        if (root == null) {
-            return;
-        }
-        if (darkMode) {
-            if (!root.getStyleClass().contains("theme-dark")) {
-                root.getStyleClass().add("theme-dark");
+    private void runAsync(String name, SqlWork work, Runnable onSuccess,
+                          Consumer<SQLException> onError) {
+        Thread t = new Thread(() -> {
+            try {
+                work.execute();
+                if (onSuccess != null) Platform.runLater(onSuccess);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                if (onError != null) Platform.runLater(() -> onError.accept(ex));
             }
-            if (themeToggle != null) {
-                themeToggle.setText("Light");
-            }
-        } else {
-            root.getStyleClass().remove("theme-dark");
-            if (themeToggle != null) {
-                themeToggle.setText("Dark");
-            }
-        }
+        }, name);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void runAsync(String name, SqlWork work, Consumer<SQLException> onError) {
+        runAsync(name, work, null, onError);
+    }
+
+    private void showSqlError(String title, String header, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showSqlError(String title, String header, SQLException ex) {
+        showSqlError(title, header, ex.getMessage());
     }
 
     private void applyDialogTheme(DialogPane dialogPane) {
@@ -1661,10 +1971,6 @@ public class MainController {
         }
         if (!dialogPane.getStyleClass().contains("dialog-root")) {
             dialogPane.getStyleClass().add("dialog-root");
-        }
-        if (root != null && root.getStyleClass().contains("theme-dark")
-                && !dialogPane.getStyleClass().contains("theme-dark")) {
-            dialogPane.getStyleClass().add("theme-dark");
         }
     }
 }

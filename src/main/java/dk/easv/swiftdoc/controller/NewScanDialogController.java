@@ -52,7 +52,6 @@ public class NewScanDialogController {
 
     @FXML private ButtonType startScanButtonType;
     @FXML private ButtonType cancelButtonType;
-    @FXML private ButtonType previewButtonType;
 
     @FXML
     private void initialize() {
@@ -123,7 +122,10 @@ public class NewScanDialogController {
                         profileService.createProfile(
                                 request.profileName(),
                                 request.client(),
-                                request.duplicateDetectionEnabled());
+                                request.duplicateDetectionEnabled(),
+                                request.profileRotation(),
+                                request.profileBrightness(),
+                                request.blackAndWhite());
                 loadProfiles();
                 profileComboBox.getSelectionModel().select(created);
             } catch (java.sql.SQLException | IllegalArgumentException ex) {
@@ -154,6 +156,10 @@ public class NewScanDialogController {
                                 .append(newVal.isDuplicateDetectionEnabled() ? "Enabled" : "Disabled");
                         profileDescriptionLabel.setText(description.toString());
                         duplicateDetectionCheckBox.setSelected(newVal.isDuplicateDetectionEnabled());
+
+                        if (boxNameTextField.getText() == null || boxNameTextField.getText().isBlank()) {
+                            boxNameTextField.setText(newVal.getProfileName());
+                        }
                     }
                     refreshStartEnabled();
                 });
@@ -172,15 +178,7 @@ public class NewScanDialogController {
 
     private void wireButtons() {
         Button startBtn = (Button) dialogPane.lookupButton(startScanButtonType);
-        Button previewBtn = (Button) dialogPane.lookupButton(previewButtonType);
-
         startBtn.addEventFilter(ActionEvent.ACTION, this::onStartScan);
-
-        previewBtn.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-            onPreview();
-        });
-
         duplicateDetectionCheckBox.setDisable(true);
         refreshStartEnabled();
     }

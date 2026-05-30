@@ -5,9 +5,8 @@ import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.ProfileService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
+import javafx.scene.control.*;
+import javafx.scene.image.ImageView;
 import javafx.stage.Stage;
 
 import java.sql.SQLException;
@@ -19,15 +18,31 @@ public class AdminController {
 
     @FXML private Label welcomeLabel;
     @FXML private ListView<Client> clientsList;
-    @FXML private ProfileManagementController profileManagementController;
+    @FXML private ImageView brandLogo;
+    @FXML private TabPane adminTabPane;
     @FXML private UserManagementController userManagementController;
-    @FXML private LogsController logsController;
 
     private User currentUser;
+    private Runnable onLogout;
+
+    @FXML
+    private void onSelectProfiles() { adminTabPane.getSelectionModel().select(0); }
+    @FXML
+    private void onSelectClients() { adminTabPane.getSelectionModel().select(1); }
+    @FXML
+    private void onSelectUsers() { adminTabPane.getSelectionModel().select(2); }
+    @FXML
+    private void onSelectLogs() { adminTabPane.getSelectionModel().select(3); }
 
     @FXML
     private void initialize() {
-        onRefreshClients();
+        // Profiles are handled by the included ProfileManagementController.
+        // Only load clients here if this view still owns a clients list.
+        javafx.application.Platform.runLater(() -> {
+            if (clientsList != null) {
+                onRefreshClients();
+            }
+        });
     }
 
     public void setCurrentUser(User user) {
@@ -40,10 +55,15 @@ public class AdminController {
         }
     }
 
+    public void setOnLogout(Runnable callback) {
+        this.onLogout = callback;
+    }
+
     // ---------------- Clients ----------------
 
     @FXML
     private void onRefreshClients() {
+        if (clientsList == null) return;
         try {
             List<Client> clients = profileService.getClients();
             clientsList.setItems(FXCollections.observableArrayList(clients));
@@ -52,13 +72,32 @@ public class AdminController {
         }
     }
 
+    @FXML
+    private void onCreateClient() {
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("Create Client");
+        dialog.setHeaderText("Add a new client");
+        dialog.setContentText("Client name:");
+
+        dialog.showAndWait().ifPresent(name -> {
+            try {
+                profileService.createClient(name);
+                onRefreshClients();
+            } catch (IllegalArgumentException | SQLException ex) {
+                showError("Could not create client", ex.getMessage());
+            }
+        });
+    }
+
     // ---------------- Session ----------------
 
     @FXML
-    private void onSignOut() {
+    private void onLogoutCommand() {
         Stage stage = (Stage) welcomeLabel.getScene().getWindow();
         stage.close();
-        javafx.application.Platform.exit();
+        if (onLogout != null) {
+            onLogout.run();
+        }
     }
 
     private void showError(String header, String content) {

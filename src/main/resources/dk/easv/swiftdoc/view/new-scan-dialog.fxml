@@ -3,62 +3,46 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<DialogPane fx:id="dialogPane" styleClass="dialog-root" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17.0.12" fx:controller="dk.easv.swiftdoc.controller.NewScanDialogController">
-    <headerText>Start a New Scan</headerText>
-    <contentText>Configure your scanning session and begin digitalization.</contentText>
+<DialogPane fx:id="dialogPane" styleClass="dialog-root" xmlns:fx="http://javafx.com/fxml/1" fx:controller="dk.easv.swiftdoc.controller.NewScanDialogController">
+    <headerText>New Scanning Session</headerText>
+    <contentText>Configure the active box and profile before starting.</contentText>
 
     <content>
-        <VBox spacing="16.0" styleClass="dialog-content">
-            <VBox spacing="10.0" styleClass="dialog-card">
-                <Label styleClass="section-title" text="Scanning Profile" />
-                <HBox spacing="12.0">
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label styleClass="muted" text="Profile" />
-                        <HBox spacing="8.0">
-                            <ComboBox fx:id="profileComboBox" maxWidth="1.7976931348623157E308" promptText="Select a profile..." HBox.hgrow="ALWAYS" />
-                        </HBox>
-                    </VBox>
-                    <VBox prefWidth="260.0" spacing="6.0" styleClass="dialog-card">
-                        <Label styleClass="muted" text="Description" />
-                        <Label fx:id="profileDescriptionLabel" styleClass="dialog-muted" text="Profile details will appear here" wrapText="true" />
+        <VBox spacing="24.0" styleClass="dialog-content" style="-fx-padding: 32;">
+            <!-- Profile Selection -->
+            <VBox spacing="12.0">
+                <Label style="-fx-font-weight: 700;" text="Scanning Profile" />
+                <HBox spacing="20.0">
+                    <ComboBox fx:id="profileComboBox" maxWidth="Infinity" promptText="Select a profile..." HBox.hgrow="ALWAYS" />
+                    <VBox prefWidth="300.0" spacing="8.0" styleClass="stat-card" style="-fx-padding: 16;">
+                        <Label styleClass="sidebar-section-title" text="Profile Details" style="-fx-padding: 0; -fx-text-fill: #0F172A;"/>
+                        <Label fx:id="profileDescriptionLabel" text="No profile selected" wrapText="true" style="-fx-text-fill: #64748B; -fx-font-size: 13px;"/>
                     </VBox>
                 </HBox>
             </VBox>
 
-            <HBox spacing="12.0">
-                <VBox spacing="8.0" styleClass="dialog-card" HBox.hgrow="ALWAYS">
-                    <Label styleClass="section-title" text="Box Information" />
-                    <GridPane hgap="8.0" vgap="6.0">
-                        <Label styleClass="muted" text="Box ID" GridPane.columnIndex="0" GridPane.rowIndex="0" />
-                        <TextField fx:id="boxNameTextField" promptText="Enter box ID (e.g., 'Inbox 001')" GridPane.columnIndex="0" GridPane.rowIndex="1" />
-                        <Label fx:id="boxNameErrorLabel" style="-fx-text-fill: #cc0000; -fx-font-size: 10;" text="" GridPane.columnIndex="0" GridPane.rowIndex="2" />
-                  <columnConstraints>
-                     <ColumnConstraints />
-                  </columnConstraints>
-                  <rowConstraints>
-                     <RowConstraints />
-                     <RowConstraints />
-                     <RowConstraints />
-                  </rowConstraints>
-                    </GridPane>
+            <!-- Box ID -->
+            <HBox spacing="20.0">
+                <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                    <Label style="-fx-font-weight: 700;" text="Box Identifier" />
+                    <TextField fx:id="boxNameTextField" promptText="e.g. Inbox-2024-001" />
+                    <Label fx:id="boxNameErrorLabel" styleClass="text-error" text="" />
                 </VBox>
-
-                <VBox spacing="8.0" prefWidth="260.0" styleClass="dialog-card">
-                    <Label text="Scan Options" styleClass="section-title"/>
-                    <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable duplicate detection"/>
+                <VBox spacing="12.0" prefWidth="300.0" alignment="CENTER_LEFT">
+                    <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable Dup. Detection" style="-fx-font-weight: 600;"/>
                 </VBox>
             </HBox>
 
-            <VBox spacing="8.0" styleClass="dialog-card">
-                <Label styleClass="section-title" text="Notes (optional)" />
-                <TextArea fx:id="notesTextArea" prefRowCount="3" promptText="Add any notes for this scanning session..." wrapText="true" />
+            <!-- Notes -->
+            <VBox spacing="8.0">
+                <Label style="-fx-font-weight: 700;" text="Session Notes (Optional)" />
+                <TextArea fx:id="notesTextArea" prefRowCount="3" promptText="Add context for this scan..." wrapText="true" />
             </VBox>
         </VBox>
     </content>
 
     <buttonTypes>
-        <ButtonType fx:id="startScanButtonType" buttonData="OK_DONE" text="Start Scan" />
-        <ButtonType fx:id="previewButtonType" buttonData="OTHER" text="Preview Settings" />
+        <ButtonType fx:id="startScanButtonType" buttonData="OK_DONE" text="Initialize Session" />
         <ButtonType fx:id="cancelButtonType" buttonData="CANCEL_CLOSE" text="Cancel" />
     </buttonTypes>
 </DialogPane>

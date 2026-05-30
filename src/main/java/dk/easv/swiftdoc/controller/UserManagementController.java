@@ -63,11 +63,12 @@ public class UserManagementController {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setText(null); setStyle(""); return; }
-                setText(item);
-                setStyle("Active".equals(item)
-                        ? "-fx-text-fill: #2a7a2a; -fx-font-weight: bold;"
-                        : "-fx-text-fill: #cc0000; -fx-font-weight: bold;");
+                setText(empty ? null : item);
+                getStyleClass().removeAll("text-success", "text-error");
+                if (!empty && item != null) {
+                    getStyleClass().add("Active".equals(item) ? "text-success" : "text-error");
+                    setStyle("-fx-font-weight: bold;");
+                }
             }
         });
 
@@ -176,29 +177,6 @@ public class UserManagementController {
     }
 
     @FXML
-    private void onDeleteClicked() {
-        User selected = usersTable.getSelectionModel().getSelectedItem();
-        if (selected == null) { showMessage("Select a user first.", false); return; }
-        if (isSelf(selected)) { showMessage("Cannot delete your own account.", true); return; }
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Permanently delete user '" + selected.getUsername() + "'?",
-                ButtonType.OK, ButtonType.CANCEL);
-        confirm.setHeaderText("Confirm delete");
-        confirm.showAndWait().ifPresent(bt -> {
-            if (bt != ButtonType.OK) return;
-            try {
-                authService.deleteUser(selected.getUserId());
-                clearForm();
-                loadUsers();
-                showMessage("User deleted.", false);
-            } catch (SQLException ex) {
-                showMessage("Could not delete user: " + ex.getMessage(), true);
-            }
-        });
-    }
-
-    @FXML
     private void onCancelClicked() {
         clearForm();
     }
@@ -242,7 +220,8 @@ public class UserManagementController {
     }
 
     private void showMessage(String msg, boolean isError) {
-        messageLabel.setStyle(isError ? "-fx-text-fill: #cc0000;" : "-fx-text-fill: #2a7a2a;");
         messageLabel.setText(msg);
+        messageLabel.getStyleClass().removeAll("text-error", "text-success");
+        messageLabel.getStyleClass().add(isError ? "text-error" : "text-success");
     }
 }

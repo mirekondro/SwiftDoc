@@ -264,7 +264,7 @@ public class FileDAO {
         try (PreparedStatement stmt = conn.prepareStatement(COUNT_FILES_IN_BOX)) {
             stmt.setInt(1, boxId);
             try (ResultSet rs = stmt.executeQuery()) {
-                rs.next();
+                if (!rs.next()) return 0;
                 return rs.getInt(1);
             }
         }
@@ -274,7 +274,7 @@ public class FileDAO {
         try (PreparedStatement stmt = conn.prepareStatement(COUNT_FILES_IN_DOCUMENT)) {
             stmt.setInt(1, documentId);
             try (ResultSet rs = stmt.executeQuery()) {
-                rs.next();
+                if (!rs.next()) return 0;
                 return rs.getInt(1);
             }
         }

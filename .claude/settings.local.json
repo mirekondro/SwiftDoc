@@ -10,7 +10,17 @@
       "Bash(xargs basename -a)",
       "Bash(mvn javafx:run)",
       "Bash(grep -v \"^$\")",
-      "Bash(grep -v \"WARNING\\\\|Picked up\\\\|^$\")"
+      "Bash(grep -v \"WARNING\\\\|Picked up\\\\|^$\")",
+      "Bash(grep -E \"\\\\.\\(java|fxml|css\\)$\")",
+      "Bash(mvn -q -DskipTests compile)",
+      "Bash(./mvnw -q resources:resources)",
+      "Bash(./mvnw -q compile)",
+      "Skill(ui-ux-pro-max)",
+      "Bash(python3 .claude/skills/ui-ux-pro-max/scripts/search.py \"desktop saas admin dashboard scanning document professional modern clean\" --design-system -p \"SwiftDoc\")",
+      "Bash(./mvnw -q resources:resources compile)",
+      "Bash(git add *)",
+      "Bash(xargs cat)",
+      "Bash(xargs cat -n)"
     ]
   }
 }

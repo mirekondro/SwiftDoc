@@ -9,6 +9,8 @@ import dk.easv.swiftdoc.model.Box;
 import dk.easv.swiftdoc.model.Document;
 import dk.easv.swiftdoc.model.File;
 import dk.easv.swiftdoc.model.ScanningProfile;
+import java.awt.image.RescaleOp;
+
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
@@ -118,9 +120,11 @@ public class ExportService {
                     continue;
                 }
                 BufferedImage decoded = decode(tiff);
-                int combinedRotation = file.getRotationAngle() + box.getGlobalRotation();
-                BufferedImage rotated = rotate(decoded, combinedRotation);
-                pages.add(rotated);
+                int combinedRotation = file.getRotationAngle()
+                        + box.getGlobalRotation()
+                        + profile.getProfileRotation();
+                BufferedImage processed = processPage(decoded, combinedRotation, profile);
+                pages.add(processed);
             }
 
             if (pages.isEmpty()) {
@@ -143,6 +147,61 @@ public class ExportService {
                 targetDir.getAbsolutePath(), exportedDocumentIds);
     }
 
+    private BufferedImage processPage(BufferedImage source, int totalRotation,
+                                      ScanningProfile profile) {
+        BufferedImage img = rotate(source, totalRotation);
+
+        int brightness = profile.getProfileBrightness();
+        if (brightness != 0) {
+            img = applyBrightness(img, brightness);
+        }
+
+        if (profile.isBlackAndWhite()) {
+            img = toBlackAndWhite(img);
+        }
+
+        return img;
+    }
+
+    /**
+     * Shift brightness. brightness is -100..100; we map it to a pixel offset
+     * of roughly -128..+128 and use a RescaleOp (scale 1.0, offset = shift).
+     * Values clamp at 0/255 automatically.
+     */
+    private BufferedImage applyBrightness(BufferedImage source, int brightness) {
+        float offset = brightness * 1.28f; // -100..100 → ~ -128..128
+
+        // RescaleOp needs a compatible image type. Work in INT_RGB to be safe.
+        BufferedImage rgb = new BufferedImage(
+                source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = rgb.createGraphics();
+        try {
+            g.drawImage(source, 0, 0, null);
+        } finally {
+            g.dispose();
+        }
+
+        RescaleOp op = new RescaleOp(1.0f, offset, null);
+        return op.filter(rgb, null);
+    }
+
+    /**
+     * Convert to 1-bit black & white using a luminance threshold at mid-gray.
+     * Produces a TYPE_BYTE_BINARY image — small files, crisp text.
+     */
+    private BufferedImage toBlackAndWhite(BufferedImage source) {
+        BufferedImage bw = new BufferedImage(
+                source.getWidth(), source.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+        // Drawing an RGB image into a BYTE_BINARY image makes Java2D apply
+        // its default ordered-dither threshold conversion for us.
+        java.awt.Graphics2D g = bw.createGraphics();
+        try {
+            g.drawImage(source, 0, 0, null);
+        } finally {
+            g.dispose();
+        }
+        return bw;
+    }
     /**
      * Decode TIFF bytes to a BufferedImage. Distinct from TiffImageLoader
      * (which targets JavaFX Image) — exports need AWT BufferedImage.
@@ -238,8 +297,10 @@ public class ExportService {
                 }
 
                 BufferedImage decoded = decode(tiff);
-                int combinedRotation = file.getRotationAngle() + box.getGlobalRotation();
-                BufferedImage rotated = rotate(decoded, combinedRotation);
+                int combinedRotation = file.getRotationAngle()
+                        + box.getGlobalRotation()
+                        + profile.getProfileRotation();
+                BufferedImage processed = processPage(decoded, combinedRotation, profile);
 
                 String fileName = buildSinglePageFileName(
                         profile.getProfileName(),
@@ -248,7 +309,7 @@ public class ExportService {
                         pageNumber);
                 java.io.File outputFile = new java.io.File(targetDir, fileName);
 
-                tiffExporter.writeMultiPage(List.of(rotated), outputFile);
+                tiffExporter.writeMultiPage(List.of(processed), outputFile);
                 filesWritten++;
                 pagesWritten++;
                 anyExportedForThisDoc = true;

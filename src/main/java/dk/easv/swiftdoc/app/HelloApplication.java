@@ -14,6 +14,7 @@ import javafx.scene.control.ButtonType;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+
 import java.sql.Connection;
 import java.util.Optional;
 
@@ -34,13 +35,14 @@ public class HelloApplication extends Application {
             }
 
             User user = loggedIn.get();
+            Runnable onLogout = () -> {
+                stage.hide();
+                launchApp(stage);
+            };
             if (user.isAdmin()) {
-                showAdminScene(stage, user);
+                showAdminScene(stage, user, onLogout);
             } else {
-                showUserScene(stage, user, () -> {
-                    stage.hide();
-                    launchApp(stage);
-                });
+                showUserScene(stage, user, onLogout);
             }
         } catch (Exception ex) {
             showStartupErrorDialog(ex);
@@ -83,7 +85,7 @@ public class HelloApplication extends Application {
         stage.show();
     }
 
-    private void showAdminScene(Stage stage, User user) throws Exception {
+    private void showAdminScene(Stage stage, User user, Runnable onLogout) throws Exception {
         FXMLLoader fxmlLoader = new FXMLLoader(HelloApplication.class.getResource(
                 "/dk/easv/swiftdoc/view/admin-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load());
@@ -92,6 +94,7 @@ public class HelloApplication extends Application {
 
         AdminController controller = fxmlLoader.getController();
         controller.setCurrentUser(user);
+        controller.setOnLogout(onLogout);
 
         stage.setTitle("SwiftDoc Admin — " + user.getUsername());
         stage.setScene(scene);
@@ -100,11 +103,17 @@ public class HelloApplication extends Application {
     }
 
     private void showStartupErrorDialog(Exception ex) {
-        Alert alert = new Alert(Alert.AlertType.ERROR,
-                "Failed to start the application.\n\n" + ex.getMessage(), ButtonType.OK);
-        alert.setTitle("Startup Error");
-        alert.setHeaderText("SwiftDoc could not be started");
-        alert.showAndWait();
+        ex.printStackTrace();   // real error goes to console
+        try {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Startup Error");
+            alert.setHeaderText("SwiftDoc could not be started");
+            alert.setContentText("Failed to start the application.\n\n" + ex.getMessage());
+            alert.showAndWait();
+        } catch (Throwable t) {
+            // If even showing the dialog fails, just log — never recurse.
+            t.printStackTrace();
+        }
     }
 
     private void testDatabaseConnectionInBackground() {

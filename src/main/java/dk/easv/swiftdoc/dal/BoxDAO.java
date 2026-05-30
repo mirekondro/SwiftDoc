@@ -31,6 +31,13 @@ public class BoxDAO {
             "SELECT BoxId, BoxName, ProfileId, GlobalRotation " +
                     "FROM dbo.Boxes ORDER BY BoxId";
 
+    private static final String SELECT_FOR_USER =
+            "SELECT b.BoxId, b.BoxName, b.ProfileId, b.GlobalRotation " +
+            "FROM dbo.Boxes b " +
+            "INNER JOIN dbo.UserProfileAccess upa ON upa.ProfileId = b.ProfileId " +
+            "WHERE upa.UserId = ? " +
+            "ORDER BY b.BoxId";
+
     private static final String COUNT_BY_PROFILE =
             "SELECT COUNT(*) FROM dbo.Boxes WHERE ProfileId = ?";
 
@@ -73,6 +80,20 @@ public class BoxDAO {
         return boxes;
     }
 
+    public List<Box> getForUser(int userId) throws SQLException {
+        List<Box> boxes = new ArrayList<>();
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SELECT_FOR_USER)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    boxes.add(mapRow(rs));
+                }
+            }
+        }
+        return boxes;
+    }
+
     /**
      * Fetch a box by its id.
      *
@@ -95,7 +116,7 @@ public class BoxDAO {
              PreparedStatement stmt = conn.prepareStatement(COUNT_BY_PROFILE)) {
             stmt.setInt(1, profileId);
             try (ResultSet rs = stmt.executeQuery()) {
-                rs.next();
+                if (!rs.next()) return 0;
                 return rs.getInt(1);
             }
         }

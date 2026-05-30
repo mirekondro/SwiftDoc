@@ -21,16 +21,14 @@ import dk.easv.swiftdoc.model.User;
 public class ScanSession {
 
     private final Box box;
-    private final Document firstDocument;
     private final User user;
-    private Document currentDocument;
+    private Document currentDocument;   // null until the first page/barcode arrives
     private int totalFileCount;
 
-    public ScanSession(Box box, Document firstDocument, User user) {
+    public ScanSession(Box box, User user) {
         this.box = box;
-        this.firstDocument = firstDocument;
         this.user = user;
-        this.currentDocument = firstDocument;
+        this.currentDocument = null;
         this.totalFileCount = 0;
     }
 
@@ -42,10 +40,6 @@ public class ScanSession {
         return user;
     }
 
-    public Document getFirstDocument() {
-        return firstDocument;
-    }
-
     public Document getCurrentDocument() {
         return currentDocument;
     }
@@ -55,9 +49,6 @@ public class ScanSession {
      * a barcode separator is detected and a new Document has been created.
      */
     public void setCurrentDocument(Document currentDocument) {
-        if (currentDocument == null) {
-            throw new IllegalArgumentException("currentDocument cannot be null");
-        }
         this.currentDocument = currentDocument;
     }
 

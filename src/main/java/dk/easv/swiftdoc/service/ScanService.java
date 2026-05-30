@@ -59,7 +59,8 @@ public class ScanService {
     public enum Kind {
         /** A regular page was scanned and saved as a File. */
         PAGE,
-        /** A barcode separator was detected; a new Document was started. */
+        /** A barcode separator was detected; a new Document was started
+         *  (or the placeholder Document was rewritten with the barcode value). */
         DOCUMENT_SPLIT
     }
 
@@ -103,15 +104,25 @@ public class ScanService {
         if (barcode.isPresent()) {
             String barcodeValue = barcode.get();
 
-            // 1. Start a new Document with this barcode.
-            Document newDoc = documentDAO.create(session.getBox().getBoxId(), barcodeValue);
-            session.setCurrentDocument(newDoc);
+            // If the current document is a placeholder (created lazily before any
+            // barcode was seen, has no barcode value), rewrite it with this barcode
+            // instead of creating a new Document — that placeholder becomes Document 1.
+            Document current = session.getCurrentDocument();
+            Document targetDoc;
+            if (current != null
+                    && (current.getBarcodeValue() == null || current.getBarcodeValue().isBlank())) {
+                documentDAO.updateBarcodeValue(current.getDocumentId(), barcodeValue);
+                current.setBarcodeValue(barcodeValue);
+                targetDoc = current;
+            } else {
+                targetDoc = documentDAO.create(session.getBox().getBoxId(), barcodeValue);
+                session.setCurrentDocument(targetDoc);
+            }
 
-            // 2. Save the barcode TIFF itself as File #1 of the new Document.
-            //    The separator sheet is part of the archival record — operators
-            //    can verify the barcode value against the actual scanned image.
+            // Save the barcode TIFF itself as a File in this Document — the
+            // separator sheet is part of the archival record.
             File barcodeFile = fileDAO.create(
-                    newDoc.getDocumentId(),
+                    targetDoc.getDocumentId(),
                     session.getBox().getBoxId(),
                     tiff.data(),
                     session.getUser().getUserId(),
@@ -123,20 +134,31 @@ public class ScanService {
                     Kind.DOCUMENT_SPLIT,
                     tiff.data(),
                     barcodeFile,
-                    newDoc,
+                    targetDoc,
                     barcodeValue
             );
         }
 
         // Non-barcode page: append as a File under the current Document.
+        // Lazy creation: if no document exists yet (session just started and the
+        // first page is not a barcode), create a placeholder Document so the page
+        // is saved. The first barcode will rewrite this placeholder.
+        Document pageDoc = session.getCurrentDocument();
+        boolean createdNewDoc = false;
+        if (pageDoc == null) {
+            pageDoc = documentDAO.create(session.getBox().getBoxId(), null);
+            session.setCurrentDocument(pageDoc);
+            createdNewDoc = true;
+        }
         File saved = fileDAO.create(
-                session.getCurrentDocument().getDocumentId(),
+                pageDoc.getDocumentId(),
                 session.getBox().getBoxId(),
                 tiff.data(),
                 session.getUser().getUserId(),
                 session.getUser().getUsername()
         );
         session.incrementFileCount();
-        return new ScanResult(Kind.PAGE, tiff.data(), saved, null, null);
+        return new ScanResult(Kind.PAGE, tiff.data(), saved,
+                createdNewDoc ? pageDoc : null, null);
     }
 }

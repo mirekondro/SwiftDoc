@@ -53,7 +53,14 @@ public class SidebarService {
      * volumes; could be replaced with a single JOIN query later if needed.
      */
     public List<BoxBranch> loadTree() throws SQLException {
-        List<Box> boxes = boxDAO.getAll();
+        return buildBranches(boxDAO.getAll());
+    }
+
+    public List<BoxBranch> loadTreeForUser(int userId) throws SQLException {
+        return buildBranches(boxDAO.getForUser(userId));
+    }
+
+    private List<BoxBranch> buildBranches(List<Box> boxes) throws SQLException {
         List<BoxBranch> branches = new ArrayList<>(boxes.size());
 
         for (Box box : boxes) {
@@ -102,5 +109,14 @@ public class SidebarService {
 
     public void updateFileRotation(int fileId, int rotationAngle) throws SQLException {
         fileDAO.updateRotation(fileId, rotationAngle);
+    }
+
+    /**
+     * Merge sourceDocId into targetDocId. All files from source are reassigned
+     * to target (with continuing IncrementalId), target's barcode is rewritten
+     * to mergedBarcode, and the source Document row is deleted.
+     */
+    public void mergeDocuments(int sourceDocId, int targetDocId, String mergedBarcode) throws SQLException {
+        documentDAO.merge(sourceDocId, targetDocId, mergedBarcode);
     }
 }

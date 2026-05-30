@@ -9,46 +9,82 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.Slider?>
 
-<HBox xmlns:fx="http://javafx.com/fxml"
-      fx:controller="dk.easv.swiftdoc.controller.ProfileManagementController"
-      spacing="14.0" styleClass="app-body">
+<ScrollPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="dk.easv.swiftdoc.controller.ProfileManagementController"
+            fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
+    <HBox spacing="32.0" styleClass="workspace-body">
 
-    <!-- Left: table + action buttons -->
-    <VBox spacing="10.0" prefWidth="520.0" styleClass="panel">
-        <Label text="Scanning profiles" styleClass="section-title"/>
+    <!-- Table Section -->
+    <VBox spacing="20.0" prefWidth="700.0" styleClass="viewer-container" style="-fx-padding: 24;">
+        <Label text="Scanning Profiles" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
         <TableView fx:id="profilesTable" VBox.vgrow="ALWAYS">
             <columns>
-                <TableColumn fx:id="colName"      text="Profile Name"        prefWidth="200"/>
-                <TableColumn fx:id="colClient"    text="Client"              prefWidth="150"/>
-                <TableColumn fx:id="colDupDetect" text="Duplicate Detection" prefWidth="150"/>
+                <TableColumn fx:id="colName"      text="Profile Name"        prefWidth="220"/>
+                <TableColumn fx:id="colClient"    text="Client"              prefWidth="160"/>
+                <TableColumn fx:id="colDupDetect" text="Dup. Detection"      prefWidth="140"/>
+                <TableColumn fx:id="colStatus"    text="Status"              prefWidth="120"/>
             </columns>
         </TableView>
-        <HBox spacing="8.0">
-            <Button text="Create"  onAction="#onCreateClicked"  styleClass="btn btn-primary"/>
-            <Button text="Edit"    onAction="#onEditClicked"    styleClass="btn"/>
-            <Button text="Delete"  onAction="#onDeleteClicked"  styleClass="btn btn-logout"/>
+        <HBox spacing="12.0">
+            <Button text="Create Profile" onAction="#onCreateClicked" styleClass="btn btn-primary">
+                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+            </Button>
+            <Button text="Edit" onAction="#onEditClicked" styleClass="btn">
+                <graphic><FontIcon iconLiteral="fas-pen"/></graphic>
+            </Button>
+            <Button fx:id="disableButton" text="Disable" onAction="#onDisableClicked" styleClass="btn btn-danger">
+                <graphic><FontIcon iconLiteral="fas-ban"/></graphic>
+            </Button>
         </HBox>
     </VBox>
 
-    <!-- Right: create / edit form -->
-    <VBox spacing="10.0" HBox.hgrow="ALWAYS" styleClass="panel">
-        <Label fx:id="formTitleLabel" text="Select a profile or click Create" styleClass="section-title"/>
+    <!-- Form Section -->
+    <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card" style="-fx-padding: 32;">
+        <Label fx:id="formTitleLabel" text="Configure Profile" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
 
-        <Label text="Profile Name"/>
-        <TextField fx:id="nameField" promptText="e.g. Standard municipal box"/>
+        <VBox spacing="16.0">
+            <VBox spacing="8.0">
+                <Label text="Profile Name" style="-fx-font-weight: 700;"/>
+                <TextField fx:id="nameField" promptText="e.g. Standard municipal box"/>
+            </VBox>
 
-        <Label text="Client"/>
-        <ComboBox fx:id="clientCombo" maxWidth="1.7976931348623157E308"/>
+            <VBox spacing="8.0">
+                <Label text="Associated Client" style="-fx-font-weight: 700;"/>
+                <ComboBox fx:id="clientCombo" maxWidth="Infinity" promptText="Select client"/>
+            </VBox>
 
-        <CheckBox fx:id="dupDetectCheck" text="Enable duplicate detection"/>
+            <CheckBox fx:id="dupDetectCheck" text="Enable intelligent duplicate detection" style="-fx-font-weight: 600;"/>
+        </VBox>
 
-        <HBox spacing="8.0">
-            <Button text="Save"   onAction="#onSaveClicked"   styleClass="btn btn-primary"/>
-            <Button text="Cancel" onAction="#onCancelClicked" styleClass="btn"/>
+        <Label text="Page Processing (applied at export)" styleClass="section-title"/>
+
+        <Label text="Rotation (degrees)"/>
+        <Spinner fx:id="rotationSpinner" editable="true" maxWidth="160.0"/>
+
+        <Label text="Brightness"/>
+        <HBox spacing="8.0" alignment="CENTER_LEFT">
+            <Slider fx:id="brightnessSlider" min="-100" max="100" value="0"
+                    showTickMarks="true" showTickLabels="true" majorTickUnit="50"
+                    HBox.hgrow="ALWAYS" maxWidth="1.7976931348623157E308"/>
+            <Label fx:id="brightnessValueLabel" text="0" minWidth="36.0"/>
+        </HBox>
+
+        <CheckBox fx:id="blackAndWhiteCheck" text="Convert to black &amp; white"/>
+
+        <HBox spacing="12.0">
+            <Button text="Save Profile" onAction="#onSaveClicked" styleClass="btn btn-primary">
+                <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+            </Button>
+            <Button text="Discard Changes" onAction="#onCancelClicked" styleClass="btn"/>
         </HBox>
 
         <Label fx:id="messageLabel" text="" wrapText="true"/>
     </VBox>
 
 </HBox>
+</ScrollPane>

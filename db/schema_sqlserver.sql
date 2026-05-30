@@ -35,6 +35,7 @@ BEGIN
         ProfileName NVARCHAR(150) NOT NULL,
         SplitRule NVARCHAR(255) NULL,
         DuplicateDetectionEnabled BIT NOT NULL DEFAULT 0,
+        IsActive BIT NOT NULL DEFAULT 1,
         ClientId INT NOT NULL,
         CONSTRAINT FK_Profiles_Clients
             FOREIGN KEY (ClientId) REFERENCES dbo.Clients(ClientId)
