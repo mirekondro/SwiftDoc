@@ -156,6 +156,10 @@ public class NewScanDialogController {
                                 .append(newVal.isDuplicateDetectionEnabled() ? "Enabled" : "Disabled");
                         profileDescriptionLabel.setText(description.toString());
                         duplicateDetectionCheckBox.setSelected(newVal.isDuplicateDetectionEnabled());
+
+                        if (boxNameTextField.getText() == null || boxNameTextField.getText().isBlank()) {
+                            boxNameTextField.setText(newVal.getProfileName());
+                        }
                     }
                     refreshStartEnabled();
                 });
