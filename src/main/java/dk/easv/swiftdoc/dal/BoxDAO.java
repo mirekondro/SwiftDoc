@@ -116,7 +116,7 @@ public class BoxDAO {
              PreparedStatement stmt = conn.prepareStatement(COUNT_BY_PROFILE)) {
             stmt.setInt(1, profileId);
             try (ResultSet rs = stmt.executeQuery()) {
-                rs.next();
+                if (!rs.next()) return 0;
                 return rs.getInt(1);
             }
         }

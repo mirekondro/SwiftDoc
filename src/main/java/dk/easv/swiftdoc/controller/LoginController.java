@@ -2,8 +2,10 @@ package dk.easv.swiftdoc.controller;
 
 import dk.easv.swiftdoc.model.User;
 import dk.easv.swiftdoc.service.AuthService;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -22,6 +24,7 @@ public class LoginController {
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
+    @FXML private Button loginButton;
     @FXML private Label errorLabel;
     @FXML private ImageView loginLogo;
 
@@ -60,24 +63,43 @@ public class LoginController {
             errorLabel.setText("Enter username and password.");
             return;
         }
-        try {
-            Optional<User> result = authService.login(username, password);
-            if (result.isEmpty()) {
-                errorLabel.setText("Invalid username or password.");
-                return;
+        loginButton.setDisable(true);
+        usernameField.setDisable(true);
+        passwordField.setDisable(true);
+
+        Thread worker = new Thread(() -> {
+            try {
+                Optional<User> result = authService.login(username, password);
+                Platform.runLater(() -> {
+                    if (result.isEmpty()) {
+                        errorLabel.setText("Invalid username or password.");
+                        restoreLoginControls();
+                    } else {
+                        authenticatedUser = result.get();
+                        closeWindow();
+                    }
+                });
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                Platform.runLater(() -> {
+                    restoreLoginControls();
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Login error");
+                    alert.setHeaderText("Database error during login");
+                    alert.setContentText(ex.getMessage());
+                    alert.showAndWait();
+                    errorLabel.setText("Database error.");
+                });
             }
-            authenticatedUser = result.get();
-            closeWindow();
-        } catch (SQLException ex) {
-            System.err.println("[LOGIN] SQL error: " + ex.getMessage());
-            ex.printStackTrace();
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Login error");
-            alert.setHeaderText("Database error during login");
-            alert.setContentText(ex.getMessage());
-            alert.showAndWait();
-            errorLabel.setText("Database error — see console.");
-        }
+        }, "login-worker");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void restoreLoginControls() {
+        loginButton.setDisable(false);
+        usernameField.setDisable(false);
+        passwordField.setDisable(false);
     }
 
     @FXML

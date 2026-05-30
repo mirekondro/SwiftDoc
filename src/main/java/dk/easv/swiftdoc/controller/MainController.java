@@ -51,6 +51,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public class MainController {
 
@@ -240,20 +241,18 @@ public class MainController {
         if (result.isEmpty() || result.get() != ButtonType.OK) return;
 
         File toDelete = currentlyDisplayedFile;
-        try {
-            fileDAO.delete(toDelete.getFileId(), toDelete.getDocumentId(),
-                    currentUser.getUserId(), currentUser.getUsername());
-            removeFileFromTree(toDelete);
-            currentlyDisplayedFile = null;
-            pageImageView.setImage(null);
-            viewerCaptionLabel.setText("No page to display yet");
-        } catch (SQLException ex) {
-            Alert error = new Alert(Alert.AlertType.ERROR);
-            error.setTitle("Error");
-            error.setHeaderText("Could not delete file");
-            error.setContentText(ex.getMessage());
-            error.showAndWait();
-        }
+        currentlyDisplayedFile = null;
+        pageImageView.setImage(null);
+        viewerCaptionLabel.setText("No page to display yet");
+
+        runAsync("delete-file-worker",
+                () -> fileDAO.delete(toDelete.getFileId(), toDelete.getDocumentId(),
+                        currentUser.getUserId(), currentUser.getUsername()),
+                () -> removeFileFromTree(toDelete),
+                ex -> {
+                    currentlyDisplayedFile = toDelete;
+                    showSqlError("Error", "Could not delete file", ex);
+                });
     }
 
     private void removeFileFromTree(File file) {
@@ -424,20 +423,12 @@ public class MainController {
                 && (lastResultLabel.getText() == null || lastResultLabel.getText().isBlank())) {
             lastResultLabel.setText("Loading sidebar...");
         }
-        Thread worker = new Thread(() -> {
-            try {
-                List<BoxBranch> branches = sidebarService.loadTreeForUser(currentUser.getUserId());
-                Platform.runLater(() -> applySidebarTree(branches));
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
-                    sidebarTree.setRoot(new TreeItem<>(null));
-                    System.err.println("Could not load sidebar tree: " + ex.getMessage());
-                });
-            }
-        }, "sidebar-load-tree");
-        worker.setDaemon(true);
-        worker.start();
+        @SuppressWarnings("unchecked")
+        List<BoxBranch>[] holder = new List[1];
+        runAsync("sidebar-load-tree",
+                () -> holder[0] = sidebarService.loadTreeForUser(currentUser.getUserId()),
+                () -> applySidebarTree(holder[0]),
+                ex -> sidebarTree.setRoot(new TreeItem<>(null)));
     }
 
     private void applySidebarTree(List<BoxBranch> branches) {
@@ -768,24 +759,13 @@ public class MainController {
         doc.setStatus(status);
         sidebarTree.refresh();
 
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.updateDocumentStatus(doc.getDocumentId(), status);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
+        runAsync("sidebar-update-status",
+                () -> sidebarService.updateDocumentStatus(doc.getDocumentId(), status),
+                ex -> {
                     doc.setStatus(previous);
                     sidebarTree.refresh();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Status update failed");
-                    alert.setHeaderText("Could not update document status");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Status update failed", "Could not update document status", ex);
                 });
-            }
-        }, "sidebar-update-status");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private Document.Status resolveBadgeStatus(SidebarNode node) {
@@ -1072,24 +1052,13 @@ public class MainController {
     }
 
     private void persistMergeAsync(int sourceDocId, int targetDocId, String mergedBarcode) {
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.mergeDocuments(sourceDocId, targetDocId, mergedBarcode);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Merge failed");
-                    alert.setHeaderText("Could not merge documents");
-                    alert.setContentText(ex.getMessage()
-                            + "\n\nReloading sidebar to reflect actual state.");
-                    alert.showAndWait();
+        runAsync("sidebar-merge-worker",
+                () -> sidebarService.mergeDocuments(sourceDocId, targetDocId, mergedBarcode),
+                ex -> {
+                    showSqlError("Merge failed", "Could not merge documents",
+                            ex.getMessage() + "\n\nReloading sidebar to reflect actual state.");
                     loadSidebarTreeAsync();
                 });
-            }
-        }, "sidebar-merge-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private boolean isSameBox(TreeItem<SidebarNode> sourceDocItem, TreeItem<SidebarNode> targetDocItem) {
@@ -1141,31 +1110,17 @@ public class MainController {
 
     private void persistDocumentOrderAsync(TreeItem<SidebarNode> documentItem) {
         List<File> orderedFiles = collectOrderedFiles(documentItem);
-
         if (orderedFiles.isEmpty()) {
             return;
         }
         syncInMemoryFileOrder(documentItem, orderedFiles);
-
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.updateFileOrder(
-                        documentItem.getValue().document().getDocumentId(),
-                        orderedFiles);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
+        runAsync("sidebar-reorder-worker",
+                () -> sidebarService.updateFileOrder(
+                        documentItem.getValue().document().getDocumentId(), orderedFiles),
+                ex -> {
                     loadSidebarTree();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Reorder failed");
-                    alert.setHeaderText("Could not save file order");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Reorder failed", "Could not save file order", ex);
                 });
-            }
-        }, "sidebar-reorder-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private void persistCrossDocumentMoveAsync(TreeItem<SidebarNode> sourceDocItem,
@@ -1176,28 +1131,16 @@ public class MainController {
         syncInMemoryFileOrder(sourceDocItem, sourceOrdered);
         syncInMemoryFileOrder(targetDocItem, targetOrdered);
 
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.moveFileAcrossDocuments(
+        runAsync("sidebar-move-worker",
+                () -> sidebarService.moveFileAcrossDocuments(
                         movedFile.getFileId(),
                         sourceDocItem.getValue().document().getDocumentId(),
                         targetDocItem.getValue().document().getDocumentId(),
-                        sourceOrdered,
-                        targetOrdered);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
+                        sourceOrdered, targetOrdered),
+                ex -> {
                     loadSidebarTree();
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Move failed");
-                    alert.setHeaderText("Could not move file");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Move failed", "Could not move file", ex);
                 });
-            }
-        }, "sidebar-move-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private boolean isFileItem(TreeItem<SidebarNode> item) {
@@ -1447,8 +1390,6 @@ public class MainController {
             if (started != null) {
                 this.activeSession = started;
                 onSessionStarted();
-            } else {
-                System.out.println("New Scan cancelled — no session started.");
             }
         } catch (Exception ex) {
             System.err.println("Failed to load new scan dialog: " + ex.getMessage());
@@ -1480,8 +1421,6 @@ public class MainController {
             if (boxItem != null) boxItem.setExpanded(true);
         });
 
-        System.out.println("Session started — Box id "
-                + activeSession.getBox().getBoxName());
     }
 
     @FXML
@@ -1573,9 +1512,6 @@ public class MainController {
                     lastResultLabel.setText("Page saved as File #"
                             + r.savedFile().getIncrementalId()
                             + " (" + r.savedFile().getTiffData().length + " bytes)");
-                    System.out.println("PAGE saved: File #" + r.savedFile().getReferenceId()
-                            + " in Document " + r.savedFile().getDocumentId());
-
                     showPageInViewer(
                             r.tiffBytes(),
                             "File #" + r.savedFile().getIncrementalId()
@@ -1594,9 +1530,6 @@ public class MainController {
                     lastResultLabel.setText("Barcode \"" + r.barcodeValue()
                             + "\" detected — Document #"
                             + r.newDocument().getDocumentNumber() + " (" + r.barcodeValue() + ")");
-                    System.out.println("SPLIT: barcode " + r.barcodeValue()
-                            + " → Document id " + r.newDocument().getDocumentId());
-
                     showPageInViewer(
                             r.tiffBytes(),
                             "File #" + r.savedFile().getIncrementalId()
@@ -1679,28 +1612,15 @@ public class MainController {
         viewerCaptionLabel.setText("Rotation: " + newAngle + "°");
 
         // 2. Persist on a background thread.
-        final int fileId = file.getFileId();
-        Thread worker = new Thread(() -> {
-            try {
-                sidebarService.updateFileRotation(fileId, newAngle);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                Platform.runLater(() -> {
-                    // Roll back: restore previous angle in both model + viewer.
+        runAsync("sidebar-rotation-worker",
+                () -> sidebarService.updateFileRotation(file.getFileId(), newAngle),
+                ex -> {
                     file.setRotationAngle(previousAngle);
                     if (currentlyDisplayedFile == file) {
                         pageImageView.setRotate(previousAngle);
                     }
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Rotation failed");
-                    alert.setHeaderText("Could not save rotation");
-                    alert.setContentText(ex.getMessage());
-                    alert.showAndWait();
+                    showSqlError("Rotation failed", "Could not save rotation", ex);
                 });
-            }
-        }, "sidebar-rotation-worker");
-        worker.setDaemon(true);
-        worker.start();
     }
 
     private void refreshSessionLabels() {
@@ -2003,6 +1923,42 @@ public class MainController {
         return null;
     }
 
+
+    @FunctionalInterface
+    private interface SqlWork {
+        void execute() throws SQLException;
+    }
+
+    private void runAsync(String name, SqlWork work, Runnable onSuccess,
+                          Consumer<SQLException> onError) {
+        Thread t = new Thread(() -> {
+            try {
+                work.execute();
+                if (onSuccess != null) Platform.runLater(onSuccess);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+                if (onError != null) Platform.runLater(() -> onError.accept(ex));
+            }
+        }, name);
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void runAsync(String name, SqlWork work, Consumer<SQLException> onError) {
+        runAsync(name, work, null, onError);
+    }
+
+    private void showSqlError(String title, String header, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showSqlError(String title, String header, SQLException ex) {
+        showSqlError(title, header, ex.getMessage());
+    }
 
     private void applyDialogTheme(DialogPane dialogPane) {
         if (dialogPane == null) {

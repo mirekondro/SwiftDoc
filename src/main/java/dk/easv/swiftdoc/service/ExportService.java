@@ -174,7 +174,12 @@ public class ExportService {
         // RescaleOp needs a compatible image type. Work in INT_RGB to be safe.
         BufferedImage rgb = new BufferedImage(
                 source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
-        rgb.getGraphics().drawImage(source, 0, 0, null);
+        Graphics2D g = rgb.createGraphics();
+        try {
+            g.drawImage(source, 0, 0, null);
+        } finally {
+            g.dispose();
+        }
 
         RescaleOp op = new RescaleOp(1.0f, offset, null);
         return op.filter(rgb, null);

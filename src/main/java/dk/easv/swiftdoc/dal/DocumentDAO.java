@@ -127,7 +127,7 @@ public class DocumentDAO {
                 try (PreparedStatement maxStmt = conn.prepareStatement(MAX_INCREMENTAL_IN_DOC)) {
                     maxStmt.setInt(1, targetDocId);
                     try (ResultSet rs = maxStmt.executeQuery()) {
-                        rs.next();
+                        if (!rs.next()) throw new SQLException("MAX query returned no rows");
                         nextIncremental = rs.getInt(1) + 1;
                     }
                 }
@@ -202,7 +202,7 @@ public class DocumentDAO {
         try (PreparedStatement count = conn.prepareStatement(COUNT_IN_BOX)) {
             count.setInt(1, boxId);
             try (ResultSet rs = count.executeQuery()) {
-                rs.next();
+                if (!rs.next()) return 0;
                 return rs.getInt(1);
             }
         }
