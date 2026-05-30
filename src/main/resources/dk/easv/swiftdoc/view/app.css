@@ -278,6 +278,9 @@
 .table-row-cell:filled:selected {
     -fx-background-color: rgba(13,148,136,0.05);
 }
+.table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #0F172A;
+}
 .table-row-cell:hover {
     -fx-background-color: rgba(0,0,0,0.02);
 }

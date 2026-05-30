@@ -97,6 +97,7 @@ public class ProfileManagementController {
     }
 
     private void onSelectionChanged(ScanningProfile profile) {
+        updateDisableButton(profile);
         if (profile == null) {
             clearForm();
             return;
@@ -177,7 +178,37 @@ public class ProfileManagementController {
     private void onDisableClicked() {
         ScanningProfile selected = profilesTable.getSelectionModel().getSelectedItem();
         if (selected == null) { showMessage("Select a profile first.", true); return; }
-        showMessage("Disable/enable for profiles is not implemented yet.", true);
+
+        boolean nowActive = !selected.isActive();
+        String verb = nowActive ? "Enable" : "Disable";
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle(verb + " Profile");
+        confirm.setHeaderText(verb + " '" + selected.getProfileName() + "'?");
+        confirm.setContentText(nowActive
+                ? "The profile will become available again for new scans."
+                : "The profile will be hidden from new scans. Existing boxes are untouched.");
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isEmpty() || result.get() != ButtonType.OK) return;
+
+        try {
+            profileService.setProfileActive(selected.getProfileId(), nowActive);
+            refresh();
+            showMessage("Profile " + (nowActive ? "enabled." : "disabled."), false);
+        } catch (SQLException ex) {
+            showError(verb + " failed", ex.getMessage());
+        }
+    }
+
+    private void updateDisableButton(ScanningProfile profile) {
+        if (disableButton == null) return;
+        if (profile == null) {
+            disableButton.setText("Disable");
+            disableButton.setDisable(true);
+        } else {
+            disableButton.setText(profile.isActive() ? "Disable" : "Enable");
+            disableButton.setDisable(false);
+        }
     }
 
     @FXML
