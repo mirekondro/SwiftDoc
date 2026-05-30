@@ -119,7 +119,9 @@ public class MainController {
         @Override
         public String toString() {
             return switch (kind) {
-                case BOX -> "Box #" + box.getBoxId();
+                case BOX -> (box.getBoxName() != null && !box.getBoxName().isBlank())
+                        ? box.getBoxName()
+                        : "Box #" + box.getBoxId();
                 case DOCUMENT -> document.toString();
                 case FILE -> "File #" + file.getIncrementalId();
             };
@@ -1104,6 +1106,25 @@ public class MainController {
                 && sourceValue.box().getBoxId() == targetValue.box().getBoxId();
     }
 
+    /**
+     * Replace the in-memory DocumentBranch's file list with the new order so
+     * that a re-render (e.g. after a stale snapshot lands) keeps the order.
+     */
+    private void syncInMemoryFileOrder(TreeItem<SidebarNode> docItem, List<File> orderedFiles) {
+        if (!isDocumentItem(docItem)) return;
+        int docId = docItem.getValue().document().getDocumentId();
+        for (BoxBranch boxBranch : allBranches) {
+            List<DocumentBranch> docs = boxBranch.documents();
+            for (int i = 0; i < docs.size(); i++) {
+                DocumentBranch db = docs.get(i);
+                if (db.document().getDocumentId() == docId) {
+                    docs.set(i, new DocumentBranch(db.document(), new ArrayList<>(orderedFiles)));
+                    return;
+                }
+            }
+        }
+    }
+
     private List<File> collectOrderedFiles(TreeItem<SidebarNode> documentItem) {
         List<File> orderedFiles = new ArrayList<>();
         int incrementalId = 1;
@@ -1124,6 +1145,7 @@ public class MainController {
         if (orderedFiles.isEmpty()) {
             return;
         }
+        syncInMemoryFileOrder(documentItem, orderedFiles);
 
         Thread worker = new Thread(() -> {
             try {
@@ -1151,6 +1173,8 @@ public class MainController {
                                               File movedFile) {
         List<File> sourceOrdered = collectOrderedFiles(sourceDocItem);
         List<File> targetOrdered = collectOrderedFiles(targetDocItem);
+        syncInMemoryFileOrder(sourceDocItem, sourceOrdered);
+        syncInMemoryFileOrder(targetDocItem, targetOrdered);
 
         Thread worker = new Thread(() -> {
             try {
@@ -1191,7 +1215,9 @@ public class MainController {
         for (DocumentBranch docBranch : branch.documents()) {
             boxItem.getChildren().add(buildDocumentItem(docBranch));
         }
-        boxItem.setExpanded(false);
+        boolean isActive = activeSession != null
+                && activeSession.getBox().getBoxId() == branch.box().getBoxId();
+        boxItem.setExpanded(isActive);
         return boxItem;
     }
 
