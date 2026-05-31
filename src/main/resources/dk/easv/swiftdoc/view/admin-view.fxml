@@ -75,33 +75,42 @@
                 <!-- CLIENTS -->
                 <Tab>
                     <ScrollPane fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
-                        <VBox spacing="32.0" styleClass="workspace-body">
-                            <HBox spacing="32.0" VBox.vgrow="ALWAYS">
-                                <VBox spacing="16.0" prefWidth="540.0" styleClass="viewer-container" style="-fx-padding: 24;">
-                                    <Label text="Registered Clients" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
-                                    <ListView fx:id="clientsList" VBox.vgrow="ALWAYS" styleClass="app-tree" style="-fx-background-color: transparent;"/>
-                                    <HBox spacing="12.0">
-                                        <Button text="Add" onAction="#onCreateClient" styleClass="btn-primary">
-                                            <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
-                                        </Button>
-                                        <Button text="Rename" onAction="#onRenameClient" styleClass="btn-secondary">
-                                            <graphic><FontIcon iconLiteral="fas-pen" iconSize="14"/></graphic>
-                                        </Button>
-                                        <Button text="Delete" onAction="#onDeleteClient" styleClass="btn-secondary">
-                                            <graphic><FontIcon iconLiteral="fas-trash" iconSize="14"/></graphic>
-                                        </Button>
-                                        <Button text="Refresh" onAction="#onRefreshClients" styleClass="btn">
-                                            <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="14"/></graphic>
-                                        </Button>
-                                    </HBox>
+                        <HBox spacing="32.0" styleClass="workspace-body">
+
+                            <!-- Table Section (Card 1) -->
+                            <VBox spacing="24.0" prefWidth="740.0" styleClass="viewer-container">
+                                <Label text="Registered Clients" styleClass="section-title"/>
+                                <ListView fx:id="clientsList" VBox.vgrow="ALWAYS" styleClass="app-tree" style="-fx-background-color: transparent;"/>
+                                <HBox spacing="12.0">
+                                    <Button text="Add Client" onAction="#onCreateClient" styleClass="btn-primary">
+                                        <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
+                                    </Button>
+                                    <Button text="Rename" onAction="#onRenameClient" styleClass="btn-secondary">
+                                        <graphic><FontIcon iconLiteral="fas-pen" iconSize="14"/></graphic>
+                                    </Button>
+                                    <Button text="Delete" onAction="#onDeleteClient" styleClass="btn-secondary">
+                                        <graphic><FontIcon iconLiteral="fas-trash" iconSize="14"/></graphic>
+                                    </Button>
+                                </HBox>
+                            </VBox>
+
+                            <!-- Info Section (Card 2) -->
+                            <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card">
+                                <VBox spacing="4.0">
+                                    <Label text="Manage Clients" styleClass="section-title"/>
                                 </VBox>
-                                <VBox spacing="16.0" HBox.hgrow="ALWAYS" styleClass="stat-card" style="-fx-padding: 32; -fx-background-color: #F8FAFC;">
-                                    <Label text="Manage Clients" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+                                <VBox spacing="20.0">
                                     <Label text="Add a new client, rename an existing one, or delete clients that have no profiles attached. Clients with profiles must be cleared first."
                                            wrapText="true" style="-fx-text-fill: #64748B; -fx-font-size: 14px;"/>
                                 </VBox>
-                            </HBox>
-                        </VBox>
+                                <HBox spacing="16.0" alignment="BOTTOM_LEFT" VBox.vgrow="ALWAYS">
+                                    <Button text="Refresh Clients" onAction="#onRefreshClients" styleClass="btn-secondary" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                                        <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="14"/></graphic>
+                                    </Button>
+                                </HBox>
+                            </VBox>
+
+                        </HBox>
                     </ScrollPane>
                 </Tab>
 

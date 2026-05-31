@@ -151,6 +151,61 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* FILTER BAR                                                          */
+/* ------------------------------------------------------------------ */
+.filter-bar {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 14;
+    -fx-border-color: #E2E8F0;
+    -fx-border-radius: 14;
+    -fx-padding: 12 16;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.04), 8, 0, 0, 2);
+}
+.filter-group {
+    -fx-background-color: #F8FAFC;
+    -fx-background-radius: 10;
+    -fx-border-color: #E2E8F0;
+    -fx-border-radius: 10;
+    -fx-padding: 4 10;
+    -fx-alignment: center-left;
+}
+.filter-group .text-field,
+.filter-group .combo-box-base,
+.filter-group .date-picker {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 6 4;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+}
+.filter-group .date-picker .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4;
+}
+.filter-group .date-picker .arrow-button .arrow {
+    -fx-background-color: #64748B;
+}
+.filter-group .combo-box-base .arrow-button {
+    -fx-background-color: transparent;
+}
+.filter-group .combo-box-base .arrow {
+    -fx-background-color: #64748B;
+}
+.filter-label {
+    -fx-text-fill: #94A3B8;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-padding: 0 4 0 0;
+}
+.filter-divider {
+    -fx-background-color: #E2E8F0;
+    -fx-pref-width: 1;
+    -fx-min-width: 1;
+    -fx-max-width: 1;
+    -fx-pref-height: 22;
+}
+
+/* ------------------------------------------------------------------ */
 /* BUTTONS                                                             */
 /* ------------------------------------------------------------------ */
 .btn {
