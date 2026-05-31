@@ -49,18 +49,18 @@
 
         <VBox spacing="20.0">
             <VBox spacing="4.0">
-                <Label text="Username" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                <Label text="Username" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <TextField fx:id="usernameField" promptText="Enter username"/>
             </VBox>
 
             <VBox spacing="4.0">
-                <Label text="Password" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                <Label text="Password" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <PasswordField fx:id="passwordField" promptText="Enter password"/>
                 <Label text="Leave blank when editing to keep current password." style="-fx-text-fill: #64748B; -fx-font-size: 11px;"/>
             </VBox>
 
             <VBox spacing="4.0">
-                <Label text="Account Role" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                <Label text="Account Role" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <ComboBox fx:id="roleCombo" maxWidth="Infinity" promptText="Select role"/>
             </VBox>
 
@@ -83,7 +83,7 @@
             </Button>
         </HBox>
 
-        <Label fx:id="messageLabel" text="" wrapText="true" style="-fx-text-fill: #10B981;"/>
+        <Label fx:id="messageLabel" text="" wrapText="true" style="-fx-text-fill: #4CD07D;"/>
     </VBox>
     </HBox>
     </ScrollPane>

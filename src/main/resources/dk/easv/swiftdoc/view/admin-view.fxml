@@ -59,7 +59,7 @@
         <!-- Top Bar -->
         <HBox alignment="CENTER_LEFT" styleClass="workspace-top-bar">
             <VBox HBox.hgrow="ALWAYS" spacing="4.0">
-                <Label text="Admin Dashboard" style="-fx-font-size: 28px; -fx-font-weight: 800; -fx-text-fill: #1F2937; -fx-padding: 0;"/>
+                <Label text="Admin Dashboard" style="-fx-font-size: 28px; -fx-font-weight: 800; -fx-text-fill: #2D3D4F; -fx-padding: 0;"/>
                 <Label fx:id="welcomeLabel" text="Signed in as admin (ADMIN)" style="-fx-text-fill: #64748B; -fx-font-size: 14px; -fx-padding: 0;"/>
             </VBox>
         </HBox>

@@ -81,7 +81,7 @@ public class HelloApplication extends Application {
         loginStage.setTitle("Sign in — SwiftDoc");
         loginStage.setScene(loginScene);
         loginStage.initModality(Modality.APPLICATION_MODAL);
-        loginStage.setResizable(false);
+        loginStage.setMaximized(true);
         loginStage.showAndWait();
 
         LoginController controller = loader.getController();

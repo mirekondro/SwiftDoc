@@ -37,7 +37,7 @@
 
             <!-- Search -->
             <HBox spacing="8.0" alignment="CENTER_LEFT" styleClass="filter-group" HBox.hgrow="ALWAYS">
-                <FontIcon iconLiteral="fas-search" iconSize="14" style="-fx-icon-color: #94A3B8;"/>
+                <FontIcon iconLiteral="fas-search" iconSize="14" style="-fx-icon-color: #BFBFBF;"/>
                 <TextField fx:id="searchField" promptText="Search by user…" HBox.hgrow="ALWAYS"/>
             </HBox>
 
@@ -45,7 +45,7 @@
 
             <!-- Operation filter -->
             <HBox spacing="8.0" alignment="CENTER_LEFT" styleClass="filter-group">
-                <FontIcon iconLiteral="fas-filter" iconSize="13" style="-fx-icon-color: #94A3B8;"/>
+                <FontIcon iconLiteral="fas-filter" iconSize="13" style="-fx-icon-color: #BFBFBF;"/>
                 <ComboBox fx:id="actionFilter" promptText="All operations" prefWidth="170"/>
             </HBox>
 
@@ -53,10 +53,10 @@
 
             <!-- Date range -->
             <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="filter-group">
-                <FontIcon iconLiteral="fas-calendar-alt" iconSize="13" style="-fx-icon-color: #94A3B8;"/>
+                <FontIcon iconLiteral="fas-calendar-alt" iconSize="13" style="-fx-icon-color: #BFBFBF;"/>
                 <Label text="FROM" styleClass="filter-label"/>
                 <DatePicker fx:id="fromDate" prefWidth="130"/>
-                <Label text="→" style="-fx-text-fill: #CBD5E1; -fx-font-size: 14px;"/>
+                <Label text="→" style="-fx-text-fill: #BFBFBF; -fx-font-size: 14px;"/>
                 <Label text="TO" styleClass="filter-label"/>
                 <DatePicker fx:id="toDate" prefWidth="130"/>
             </HBox>

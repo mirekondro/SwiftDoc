@@ -53,13 +53,13 @@
         <VBox spacing="20.0">
             <!-- Profile Name -->
             <VBox spacing="4.0">
-                <Label text="Profile Name" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                <Label text="Profile Name" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <TextField fx:id="nameField" promptText="e.g. Standard municipal box"/>
             </VBox>
 
             <!-- Associated Client -->
             <VBox spacing="4.0">
-                <Label text="Associated Client" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                <Label text="Associated Client" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <ComboBox fx:id="clientCombo" maxWidth="Infinity" promptText="Select Client"/>
             </VBox>
 
@@ -72,7 +72,7 @@
 
             <!-- Rotation -->
             <VBox spacing="4.0">
-                <Label text="Rotation" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                <Label text="Rotation" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <HBox spacing="12.0" alignment="CENTER_LEFT">
                     <Spinner fx:id="rotationSpinner" editable="true" prefWidth="100.0"/>
                     <Label text="degrees" style="-fx-text-fill: #64748B;"/>
@@ -85,9 +85,9 @@
             <!-- Brightness -->
             <VBox spacing="4.0">
                 <HBox alignment="CENTER_LEFT" spacing="8.0">
-                    <Label text="Brightness" style="-fx-text-fill: #1F2937; -fx-font-weight: 700;"/>
+                    <Label text="Brightness" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="brightnessValueLabel" text="0" style="-fx-text-fill: #0D9488; -fx-font-weight: 800;"/>
+                    <Label fx:id="brightnessValueLabel" text="0" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 800;"/>
                 </HBox>
                 <HBox spacing="12.0" alignment="CENTER">
                     <FontIcon iconLiteral="fas-sun" iconSize="16" iconColor="#64748B"/>
@@ -106,7 +106,7 @@
             </Button>
         </HBox>
 
-        <Label fx:id="messageLabel" text="" wrapText="true" style="-fx-text-fill: #10B981;"/>
+        <Label fx:id="messageLabel" text="" wrapText="true" style="-fx-text-fill: #4CD07D;"/>
     </VBox>
 
 </HBox>
