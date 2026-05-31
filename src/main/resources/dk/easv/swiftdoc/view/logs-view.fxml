@@ -9,6 +9,7 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 
@@ -17,31 +18,53 @@
             fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
     <VBox spacing="32.0" styleClass="workspace-body">
 
-    <VBox spacing="20.0" VBox.vgrow="ALWAYS" styleClass="viewer-container" style="-fx-padding: 32;">
+    <VBox spacing="24.0" VBox.vgrow="ALWAYS" styleClass="viewer-container">
 
         <!-- Header -->
         <HBox spacing="16.0" alignment="CENTER_LEFT">
-            <VBox HBox.hgrow="ALWAYS">
-                <Label text="System Activity Logs" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0; -fx-font-size: 20px;"/>
-                <Label text="Audit trail for all file and document operations" style="-fx-text-fill: #64748B;"/>
+            <VBox HBox.hgrow="ALWAYS" spacing="4.0">
+                <Label text="System Activity Logs" styleClass="section-title"/>
+                <Label text="Audit trail for all file and document operations" style="-fx-text-fill: #64748B; -fx-font-size: 14px;"/>
             </VBox>
             <Label fx:id="countLabel" style="-fx-text-fill: #64748B; -fx-font-size: 13px;"/>
-            <Button text="Refresh" onAction="#onRefresh" styleClass="btn btn-primary">
+            <Button text="Refresh" onAction="#onRefresh" styleClass="btn-primary">
                 <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="14"/></graphic>
             </Button>
         </HBox>
 
         <!-- Filter Bar -->
-        <HBox spacing="10.0" alignment="CENTER_LEFT" style="-fx-background-color: #F1F5F9; -fx-background-radius: 12; -fx-padding: 12 16;">
-            <FontIcon iconLiteral="fas-search" iconSize="14" style="-fx-icon-color: #94A3B8;"/>
-            <TextField fx:id="searchField" promptText="Search by user…" prefWidth="190" styleClass="text-field" style="-fx-pref-height: 36; -fx-padding: 6 12;"/>
-            <ComboBox fx:id="actionFilter" promptText="All operations" prefWidth="185"/>
-            <Label text="From" style="-fx-text-fill: #64748B; -fx-font-size: 13px;"/>
-            <DatePicker fx:id="fromDate" prefWidth="148"/>
-            <Label text="To" style="-fx-text-fill: #64748B; -fx-font-size: 13px;"/>
-            <DatePicker fx:id="toDate" prefWidth="148"/>
-            <Button text="Clear" onAction="#onClearFilters" styleClass="btn">
-                <graphic><FontIcon iconLiteral="fas-times" iconSize="13"/></graphic>
+        <HBox spacing="12.0" alignment="CENTER_LEFT" styleClass="filter-bar">
+
+            <!-- Search -->
+            <HBox spacing="8.0" alignment="CENTER_LEFT" styleClass="filter-group" HBox.hgrow="ALWAYS">
+                <FontIcon iconLiteral="fas-search" iconSize="14" style="-fx-icon-color: #94A3B8;"/>
+                <TextField fx:id="searchField" promptText="Search by user…" HBox.hgrow="ALWAYS"/>
+            </HBox>
+
+            <Region styleClass="filter-divider"/>
+
+            <!-- Operation filter -->
+            <HBox spacing="8.0" alignment="CENTER_LEFT" styleClass="filter-group">
+                <FontIcon iconLiteral="fas-filter" iconSize="13" style="-fx-icon-color: #94A3B8;"/>
+                <ComboBox fx:id="actionFilter" promptText="All operations" prefWidth="170"/>
+            </HBox>
+
+            <Region styleClass="filter-divider"/>
+
+            <!-- Date range -->
+            <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="filter-group">
+                <FontIcon iconLiteral="fas-calendar-alt" iconSize="13" style="-fx-icon-color: #94A3B8;"/>
+                <Label text="FROM" styleClass="filter-label"/>
+                <DatePicker fx:id="fromDate" prefWidth="130"/>
+                <Label text="→" style="-fx-text-fill: #CBD5E1; -fx-font-size: 14px;"/>
+                <Label text="TO" styleClass="filter-label"/>
+                <DatePicker fx:id="toDate" prefWidth="130"/>
+            </HBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <Button text="Clear" onAction="#onClearFilters" styleClass="btn-secondary">
+                <graphic><FontIcon iconLiteral="fas-times" iconSize="14"/></graphic>
             </Button>
         </HBox>
 

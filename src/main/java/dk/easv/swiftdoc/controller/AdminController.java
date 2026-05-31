@@ -100,7 +100,7 @@ public class AdminController {
     @FXML
     private void onCreateClient() {
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Create Client");
+        dialog.setTitle("Add Client");
         dialog.setHeaderText("Add a new client");
         dialog.setContentText("Client name:");
 
@@ -110,6 +110,53 @@ public class AdminController {
                 onRefreshClients();
             } catch (IllegalArgumentException | SQLException ex) {
                 showError("Could not create client", ex.getMessage());
+            }
+        });
+    }
+
+    @FXML
+    private void onRenameClient() {
+        if (clientsList == null) return;
+        Client selected = clientsList.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showInfo("No client selected", "Select a client to rename.");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog(selected.getClientName());
+        dialog.setTitle("Rename Client");
+        dialog.setHeaderText("Rename \"" + selected.getClientName() + "\"");
+        dialog.setContentText("New name:");
+
+        dialog.showAndWait().ifPresent(newName -> {
+            try {
+                profileService.renameClient(selected, newName);
+                onRefreshClients();
+            } catch (IllegalArgumentException | SQLException ex) {
+                showError("Could not rename client", ex.getMessage());
+            }
+        });
+    }
+
+    @FXML
+    private void onDeleteClient() {
+        if (clientsList == null) return;
+        Client selected = clientsList.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showInfo("No client selected", "Select a client to delete.");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Client");
+        confirm.setHeaderText("Delete \"" + selected.getClientName() + "\"?");
+        confirm.setContentText("This action cannot be undone. Clients with attached profiles cannot be deleted.");
+        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+            try {
+                profileService.deleteClient(selected);
+                onRefreshClients();
+            } catch (IllegalStateException | IllegalArgumentException | SQLException ex) {
+                showError("Could not delete client", ex.getMessage());
             }
         });
     }
@@ -128,6 +175,14 @@ public class AdminController {
     private void showError(String header, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String header, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Info");
         alert.setHeaderText(header);
         alert.setContentText(content);
         alert.showAndWait();

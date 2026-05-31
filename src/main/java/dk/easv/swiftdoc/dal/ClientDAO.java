@@ -25,6 +25,15 @@ public class ClientDAO {
     private static final String SELECT_BY_NAME =
             "SELECT ClientId FROM dbo.Clients WHERE ClientName = ?";
 
+    private static final String UPDATE_CLIENT =
+            "UPDATE dbo.Clients SET ClientName = ? WHERE ClientId = ?";
+
+    private static final String DELETE_CLIENT =
+            "DELETE FROM dbo.Clients WHERE ClientId = ?";
+
+    private static final String COUNT_PROFILES_FOR_CLIENT =
+            "SELECT COUNT(*) FROM dbo.Profiles WHERE ClientId = ?";
+
     public List<Client> getAll() throws SQLException {
         List<Client> clients = new ArrayList<>();
 
@@ -63,6 +72,33 @@ public class ClientDAO {
             }
         }
         throw new SQLException("Failed to create client (no key returned).");
+    }
+
+    public void rename(int clientId, String newName) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(UPDATE_CLIENT)) {
+            stmt.setString(1, newName);
+            stmt.setInt(2, clientId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void delete(int clientId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(DELETE_CLIENT)) {
+            stmt.setInt(1, clientId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public int countProfiles(int clientId) throws SQLException {
+        try (Connection conn = DBConnection.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(COUNT_PROFILES_FOR_CLIENT)) {
+            stmt.setInt(1, clientId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
     }
 }
 

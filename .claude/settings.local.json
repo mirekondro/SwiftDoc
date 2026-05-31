@@ -20,7 +20,11 @@
       "Bash(./mvnw -q resources:resources compile)",
       "Bash(git add *)",
       "Bash(xargs cat)",
-      "Bash(xargs cat -n)"
+      "Bash(xargs cat -n)",
+      "Bash(file *)",
+      "Bash(curl -sSL \"https://api.github.com/repos/google/fonts/contents/ofl/montserrat?ref=main\")",
+      "Bash(curl -sSL -o \"Montserrat.ttf\" \"https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/Montserrat%5Bwght%5D.ttf\")",
+      "Bash(curl -sSL \"https://api.github.com/repos/google/fonts/contents/ofl/montserrat/static?ref=main\")"
     ]
   }
 }

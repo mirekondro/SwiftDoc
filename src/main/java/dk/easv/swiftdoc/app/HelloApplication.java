@@ -11,8 +11,11 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+
+import java.io.InputStream;
 
 
 import java.sql.Connection;
@@ -22,8 +25,25 @@ public class HelloApplication extends Application {
     @Override
     public void start(Stage stage) {
         Platform.setImplicitExit(false);
+        loadFonts();
         testDatabaseConnectionInBackground();
         launchApp(stage);
+    }
+
+    private void loadFonts() {
+        String[] weights = {"Regular", "Medium", "SemiBold", "Bold"};
+        for (String w : weights) {
+            String path = "/dk/easv/swiftdoc/fonts/Montserrat-" + w + ".ttf";
+            try (InputStream in = HelloApplication.class.getResourceAsStream(path)) {
+                if (in == null) {
+                    System.err.println("Warning: font not found: " + path);
+                    continue;
+                }
+                Font.loadFont(in, 14);
+            } catch (Exception ex) {
+                System.err.println("Warning: failed to load " + path + ": " + ex.getMessage());
+            }
+        }
     }
 
     private void launchApp(Stage stage) {
