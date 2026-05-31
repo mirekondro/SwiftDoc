@@ -324,8 +324,14 @@ public class MainController {
     private void onKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        if (event.isShiftDown() && code == KeyCode.S) {
-            onShowShortcutsCommand();
+        if (code == KeyCode.F3) {
+            onSaveCommand();
+            event.consume();
+            return;
+        }
+        if (code == KeyCode.DELETE) {
+            // Delete already confirms before removing, so this shortcut is safe.
+            onDeleteFileCommand();
             event.consume();
             return;
         }
@@ -1438,7 +1444,7 @@ public class MainController {
             finishSessionButton.setVisible(false);
             finishSessionButton.setManaged(false);
         }
-        sessionInfoLabel.setText("No active session");
+        sessionInfoLabel.setText("None");
         lastResultLabel.setText("Session finished. Box #" + finishedBoxId
                 + " moved to history.");
         viewerCaptionLabel.setText("No page to display yet");
@@ -1624,13 +1630,8 @@ public class MainController {
     }
 
     private void refreshSessionLabels() {
-        Document current = activeSession.getCurrentDocument();
-        String docLine = (current == null)
-                ? "Current document: none yet"
-                : "Current document: #" + current.getDocumentNumber();
-        sessionInfoLabel.setText(
-                "Box #" + activeSession.getBox().getBoxId() + "\n" + docLine);
-        counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());
+        sessionInfoLabel.setText("Box #" + activeSession.getBox().getBoxId());
+        counterLabel.setText(String.valueOf(activeSession.getTotalFileCount()));
     }
 
     private void handleRetryableError(String header, String body) {
@@ -1840,27 +1841,36 @@ public class MainController {
             markDocumentsAsExportedAsync(result.exportedDocumentIds());
         }
 
-
+        boolean nothingExported = result.filesWritten() == 0;
         StringBuilder summary = new StringBuilder();
-        summary.append("Wrote ").append(result.filesWritten())
-                .append(" TIFF file(s) totalling ")
-                .append(result.pagesWritten()).append(" page(s)")
-                .append(" to:\n").append(result.outputDir());
+        if (nothingExported) {
+            summary.append("No TIFF files were written.");
+        } else {
+            summary.append("Wrote ").append(result.filesWritten())
+                    .append(" TIFF file(s) totalling ")
+                    .append(result.pagesWritten()).append(" page(s)")
+                    .append(" to:\n").append(result.outputDir());
+        }
 
         if (!result.skipped().isEmpty()) {
-            summary.append("\n\nSkipped:");
+            summary.append(nothingExported ? "\n\nReason:" : "\n\nSkipped:");
             for (String s : result.skipped()) {
                 summary.append("\n  • ").append(s);
             }
         }
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Export complete");
-        alert.setHeaderText("Box exported successfully");
+        Alert alert = new Alert(nothingExported
+                ? Alert.AlertType.WARNING : Alert.AlertType.INFORMATION);
+        alert.setTitle(nothingExported ? "Nothing to export" : "Export complete");
+        alert.setHeaderText(nothingExported
+                ? "The export folder is empty"
+                : "Box exported successfully");
         alert.setContentText(summary.toString());
         alert.showAndWait();
 
-        lastResultLabel.setText("Exported " + result.filesWritten() + " file(s).");
+        lastResultLabel.setText(nothingExported
+                ? "Nothing was exported."
+                : "Exported " + result.filesWritten() + " file(s).");
     }
 
     public ScanSession getActiveSession() {

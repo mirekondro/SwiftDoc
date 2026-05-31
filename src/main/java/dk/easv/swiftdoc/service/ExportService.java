@@ -95,12 +95,20 @@ public class ExportService {
         ScanningProfile profile = profileDAO.getById(box.getProfileId()).orElseThrow(
                 () -> new IllegalArgumentException("Profile id " + box.getProfileId() + " not found"));
         List<Document> documents = documentDAO.getByBox(boxId);
-        java.io.File targetDir = resolveOutputSubfolder(outputDir, profile, boxId);
 
         int filesWritten = 0;
         int pagesWritten = 0;
         List<String> skipped = new ArrayList<>();
         List<Integer> exportedDocumentIds = new ArrayList<>();
+
+        if (documents.isEmpty()) {
+            skipped.add("Box has no documents to export.");
+        }
+
+        // Defer creating the subfolder until we actually have something to
+        // write. This avoids leaving stray empty folders on disk when the
+        // box has no documents or every document is empty.
+        java.io.File targetDir = null;
 
         for (Document doc : documents) {
             List<File> files = fileDAO.getByDocument(doc.getDocumentId());
@@ -132,10 +140,12 @@ public class ExportService {
                 continue;
             }
 
+            if (targetDir == null) {
+                targetDir = createOutputSubfolder(outputDir, profile, boxId);
+            }
             String fileName = buildFileName(profile.getProfileName(),
                     box.getBoxId(), doc.getDocumentNumber());
             java.io.File outputFile = new java.io.File(targetDir, fileName);
-
 
             tiffExporter.writeMultiPage(pages, outputFile);
             filesWritten++;
@@ -143,8 +153,11 @@ public class ExportService {
             exportedDocumentIds.add(doc.getDocumentId());
         }
 
+        String outputPath = targetDir != null
+                ? targetDir.getAbsolutePath()
+                : outputDir.getAbsolutePath();
         return new ExportResult(filesWritten, pagesWritten, skipped,
-                targetDir.getAbsolutePath(), exportedDocumentIds);
+                outputPath, exportedDocumentIds);
     }
 
     private BufferedImage processPage(BufferedImage source, int totalRotation,
@@ -269,11 +282,16 @@ public class ExportService {
                 () -> new IllegalArgumentException("Profile id " + box.getProfileId() + " not found"));
         List<Document> documents = documentDAO.getByBox(boxId);
 
-        java.io.File targetDir = resolveOutputSubfolder(outputDir, profile, boxId);
         int filesWritten = 0;
         int pagesWritten = 0;
         List<String> skipped = new ArrayList<>();
         List<Integer> exportedDocumentIds = new ArrayList<>();
+
+        if (documents.isEmpty()) {
+            skipped.add("Box has no documents to export.");
+        }
+
+        java.io.File targetDir = null;
 
         for (Document doc : documents) {
             List<File> files = fileDAO.getByDocument(doc.getDocumentId());
@@ -302,6 +320,9 @@ public class ExportService {
                         + profile.getProfileRotation();
                 BufferedImage processed = processPage(decoded, combinedRotation, profile);
 
+                if (targetDir == null) {
+                    targetDir = createOutputSubfolder(outputDir, profile, boxId);
+                }
                 String fileName = buildSinglePageFileName(
                         profile.getProfileName(),
                         box.getBoxId(),
@@ -320,13 +341,16 @@ public class ExportService {
             }
         }
 
+        String outputPath = targetDir != null
+                ? targetDir.getAbsolutePath()
+                : outputDir.getAbsolutePath();
         return new ExportResult(filesWritten, pagesWritten, skipped,
-                targetDir.getAbsolutePath(), exportedDocumentIds);
+                outputPath, exportedDocumentIds);
     }
 
-    private java.io.File resolveOutputSubfolder(java.io.File outputDir,
-                                                ScanningProfile profile,
-                                                int boxId) throws IOException {
+    private java.io.File createOutputSubfolder(java.io.File outputDir,
+                                               ScanningProfile profile,
+                                               int boxId) throws IOException {
         String safeName = sanitizeForFilesystem(profile.getProfileName());
         String subfolderName = safeName + "_" + boxId;
         java.io.File subfolder = new java.io.File(outputDir, subfolderName);

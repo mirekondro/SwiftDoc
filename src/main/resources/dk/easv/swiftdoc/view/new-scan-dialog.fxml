@@ -15,7 +15,7 @@
                 <HBox spacing="20.0">
                     <ComboBox fx:id="profileComboBox" maxWidth="Infinity" promptText="Select a profile..." HBox.hgrow="ALWAYS" />
                     <VBox prefWidth="300.0" spacing="8.0" styleClass="stat-card" style="-fx-padding: 16;">
-                        <Label styleClass="sidebar-section-title" text="Profile Details" style="-fx-padding: 0; -fx-text-fill: #0F172A;"/>
+                        <Label styleClass="sidebar-section-title" text="Profile Details" style="-fx-padding: 0; -fx-text-fill: #2D3D4F;"/>
                         <Label fx:id="profileDescriptionLabel" text="No profile selected" wrapText="true" style="-fx-text-fill: #64748B; -fx-font-size: 13px;"/>
                     </VBox>
                 </HBox>

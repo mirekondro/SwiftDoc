@@ -22,17 +22,42 @@ public class AdminController {
     @FXML private TabPane adminTabPane;
     @FXML private UserManagementController userManagementController;
 
+    @FXML private Button btnProfiles;
+    @FXML private Button btnClients;
+    @FXML private Button btnUsers;
+    @FXML private Button btnLogs;
+
     private User currentUser;
     private Runnable onLogout;
 
     @FXML
-    private void onSelectProfiles() { adminTabPane.getSelectionModel().select(0); }
+    private void onSelectProfiles() { 
+        adminTabPane.getSelectionModel().select(0);
+        updateActiveButton(btnProfiles);
+    }
     @FXML
-    private void onSelectClients() { adminTabPane.getSelectionModel().select(1); }
+    private void onSelectClients() { 
+        adminTabPane.getSelectionModel().select(1);
+        updateActiveButton(btnClients);
+    }
     @FXML
-    private void onSelectUsers() { adminTabPane.getSelectionModel().select(2); }
+    private void onSelectUsers() { 
+        adminTabPane.getSelectionModel().select(2);
+        updateActiveButton(btnUsers);
+    }
     @FXML
-    private void onSelectLogs() { adminTabPane.getSelectionModel().select(3); }
+    private void onSelectLogs() { 
+        adminTabPane.getSelectionModel().select(3);
+        updateActiveButton(btnLogs);
+    }
+
+    private void updateActiveButton(Button activeBtn) {
+        btnProfiles.getStyleClass().remove("btn-sidebar-active");
+        btnClients.getStyleClass().remove("btn-sidebar-active");
+        btnUsers.getStyleClass().remove("btn-sidebar-active");
+        btnLogs.getStyleClass().remove("btn-sidebar-active");
+        activeBtn.getStyleClass().add("btn-sidebar-active");
+    }
 
     @FXML
     private void initialize() {
@@ -75,7 +100,7 @@ public class AdminController {
     @FXML
     private void onCreateClient() {
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Create Client");
+        dialog.setTitle("Add Client");
         dialog.setHeaderText("Add a new client");
         dialog.setContentText("Client name:");
 
@@ -85,6 +110,53 @@ public class AdminController {
                 onRefreshClients();
             } catch (IllegalArgumentException | SQLException ex) {
                 showError("Could not create client", ex.getMessage());
+            }
+        });
+    }
+
+    @FXML
+    private void onRenameClient() {
+        if (clientsList == null) return;
+        Client selected = clientsList.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showInfo("No client selected", "Select a client to rename.");
+            return;
+        }
+
+        TextInputDialog dialog = new TextInputDialog(selected.getClientName());
+        dialog.setTitle("Rename Client");
+        dialog.setHeaderText("Rename \"" + selected.getClientName() + "\"");
+        dialog.setContentText("New name:");
+
+        dialog.showAndWait().ifPresent(newName -> {
+            try {
+                profileService.renameClient(selected, newName);
+                onRefreshClients();
+            } catch (IllegalArgumentException | SQLException ex) {
+                showError("Could not rename client", ex.getMessage());
+            }
+        });
+    }
+
+    @FXML
+    private void onDeleteClient() {
+        if (clientsList == null) return;
+        Client selected = clientsList.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showInfo("No client selected", "Select a client to delete.");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Client");
+        confirm.setHeaderText("Delete \"" + selected.getClientName() + "\"?");
+        confirm.setContentText("This action cannot be undone. Clients with attached profiles cannot be deleted.");
+        confirm.showAndWait().filter(b -> b == ButtonType.OK).ifPresent(b -> {
+            try {
+                profileService.deleteClient(selected);
+                onRefreshClients();
+            } catch (IllegalStateException | IllegalArgumentException | SQLException ex) {
+                showError("Could not delete client", ex.getMessage());
             }
         });
     }
@@ -103,6 +175,14 @@ public class AdminController {
     private void showError(String header, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Error");
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String header, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Info");
         alert.setHeaderText(header);
         alert.setContentText(content);
         alert.showAndWait();

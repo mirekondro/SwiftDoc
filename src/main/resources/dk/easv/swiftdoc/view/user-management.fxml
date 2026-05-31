@@ -18,9 +18,9 @@
             fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
     <HBox spacing="32.0" styleClass="workspace-body">
 
-    <!-- Table Section -->
-    <VBox spacing="20.0" prefWidth="600.0" styleClass="viewer-container" style="-fx-padding: 24;">
-        <Label text="User Accounts" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+    <!-- Table Section (Card 1) -->
+    <VBox spacing="24.0" prefWidth="740.0" styleClass="viewer-container">
+        <Label text="User Accounts" styleClass="section-title"/>
         <TableView fx:id="usersTable" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colUsername" text="Username" prefWidth="240"/>
@@ -29,56 +29,61 @@
             </columns>
         </TableView>
         <HBox spacing="12.0">
-            <Button text="Create User" onAction="#onCreateClicked" styleClass="btn btn-primary">
-                <graphic><FontIcon iconLiteral="fas-user-plus"/></graphic>
+            <Button text="Create User" onAction="#onCreateClicked" styleClass="btn-primary">
+                <graphic><FontIcon iconLiteral="fas-user-plus" iconSize="14"/></graphic>
             </Button>
-            <Button text="Edit" onAction="#onEditClicked" styleClass="btn">
-                <graphic><FontIcon iconLiteral="fas-pen"/></graphic>
+            <Button text="Edit" onAction="#onEditClicked" styleClass="btn-secondary">
+                <graphic><FontIcon iconLiteral="fas-pen" iconSize="14"/></graphic>
             </Button>
-            <Button fx:id="deactivateButton" text="Deactivate" onAction="#onDeactivateClicked" styleClass="btn btn-danger">
-                <graphic><FontIcon iconLiteral="fas-user-slash"/></graphic>
+            <Button fx:id="deactivateButton" text="Deactivate" onAction="#onDeactivateClicked" styleClass="btn-secondary">
+                <graphic><FontIcon iconLiteral="fas-user-slash" iconSize="14"/></graphic>
             </Button>
         </HBox>
     </VBox>
 
-    <!-- Form Section -->
-    <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card" style="-fx-padding: 32;">
-        <Label fx:id="formTitleLabel" text="User Details" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
-        
-        <VBox spacing="16.0">
-            <VBox spacing="8.0">
-                <Label text="Username" style="-fx-font-weight: 700;"/>
+    <!-- Form Section (Card 2) -->
+    <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card">
+        <VBox spacing="4.0">
+            <Label fx:id="formTitleLabel" text="User Details" styleClass="section-title"/>
+        </VBox>
+
+        <VBox spacing="20.0">
+            <VBox spacing="4.0">
+                <Label text="Username" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <TextField fx:id="usernameField" promptText="Enter username"/>
             </VBox>
-            
-            <VBox spacing="8.0">
-                <Label text="Password" style="-fx-font-weight: 700;"/>
+
+            <VBox spacing="4.0">
+                <Label text="Password" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <PasswordField fx:id="passwordField" promptText="Enter password"/>
                 <Label text="Leave blank when editing to keep current password." style="-fx-text-fill: #64748B; -fx-font-size: 11px;"/>
             </VBox>
-            
-            <VBox spacing="8.0">
-                <Label text="Account Role" style="-fx-font-weight: 700;"/>
+
+            <VBox spacing="4.0">
+                <Label text="Account Role" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <ComboBox fx:id="roleCombo" maxWidth="Infinity" promptText="Select role"/>
+            </VBox>
+
+            <!-- Profile Access -->
+            <VBox fx:id="profileAccessSection" spacing="12.0" visible="false" managed="false">
+                <Separator prefWidth="200"/>
+                <Label text="Profile Permissions" styleClass="section-title" style="-fx-font-size: 16px;"/>
+                <ScrollPane fitToWidth="true" prefHeight="200.0" style="-fx-background-color: transparent;">
+                    <VBox fx:id="profileCheckboxContainer" spacing="10.0" style="-fx-padding: 8;"/>
+                </ScrollPane>
             </VBox>
         </VBox>
 
-        <HBox spacing="12.0">
-            <Button text="Save Account" onAction="#onSaveClicked" styleClass="btn btn-primary">
-                <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+        <HBox spacing="16.0" alignment="BOTTOM_LEFT" VBox.vgrow="ALWAYS">
+            <Button text="Save Account" onAction="#onSaveClicked" styleClass="btn-primary" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                <graphic><FontIcon iconLiteral="fas-save" iconSize="14"/></graphic>
             </Button>
-            <Button text="Discard Changes" onAction="#onCancelClicked" styleClass="btn"/>
+            <Button text="Discard Changes" onAction="#onCancelClicked" styleClass="btn-secondary" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                <graphic><FontIcon iconLiteral="fas-times" iconSize="14"/></graphic>
+            </Button>
         </HBox>
-        <Label fx:id="messageLabel" text="" wrapText="true"/>
 
-        <!-- Profile Access -->
-        <VBox fx:id="profileAccessSection" spacing="16.0" visible="false" managed="false">
-            <Separator prefWidth="200"/>
-            <Label text="Profile Permissions" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
-            <ScrollPane fitToWidth="true" prefHeight="240.0" style="-fx-background-color: transparent;">
-                <VBox fx:id="profileCheckboxContainer" spacing="10.0" style="-fx-padding: 8;"/>
-            </ScrollPane>
-        </VBox>
+        <Label fx:id="messageLabel" text="" wrapText="true" style="-fx-text-fill: #4CD07D;"/>
     </VBox>
     </HBox>
     </ScrollPane>

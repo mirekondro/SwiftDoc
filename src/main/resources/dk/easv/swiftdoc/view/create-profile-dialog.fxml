@@ -36,7 +36,7 @@
 
             <!-- Page Processing -->
             <VBox spacing="16.0" styleClass="stat-card" style="-fx-padding: 24;">
-                <Label text="Automation Rules" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+                <Label text="Automation Rules" styleClass="sidebar-section-title" style="-fx-text-fill: #2D3D4F; -fx-padding: 0;"/>
                 
                 <CheckBox fx:id="duplicateDetectionCheckBox" text="Enable intelligent duplicate detection" style="-fx-font-weight: 600;"/>
 

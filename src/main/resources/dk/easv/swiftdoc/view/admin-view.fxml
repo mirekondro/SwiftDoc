@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
+<?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -17,33 +18,37 @@
       styleClass="app-root">
 
     <!-- SIDEBAR -->
-    <VBox styleClass="app-sidebar" minWidth="350.0" maxWidth="350.0">
+    <VBox styleClass="app-sidebar">
         <!-- Logo -->
         <VBox styleClass="sidebar-logo-container">
-            <ImageView fx:id="brandLogo" preserveRatio="true" fitHeight="40"/>
+            <ImageView fx:id="brandLogo" preserveRatio="true" fitHeight="32">
+                <image>
+                    <Image url="@../assets/logos/LogoBlue2H.png"/>
+                </image>
+            </ImageView>
         </VBox>
 
         <!-- Navigation -->
-        <VBox spacing="8.0" styleClass="sidebar-nav-container" VBox.vgrow="ALWAYS">
-            <Label text="Administration" styleClass="sidebar-section-title" style="-fx-text-fill: #FFFFFF;"/>
-            <Button text="Profiles" onAction="#onSelectProfiles" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-layer-group" iconSize="14"/></graphic>
+        <VBox styleClass="sidebar-nav-container" VBox.vgrow="ALWAYS">
+            <Label text="Administration" styleClass="sidebar-section-title"/>
+            <Button fx:id="btnProfiles" text="Profiles" onAction="#onSelectProfiles" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-layer-group" iconSize="16"/></graphic>
             </Button>
-            <Button text="Clients" onAction="#onSelectClients" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-building" iconSize="14"/></graphic>
+            <Button fx:id="btnClients" text="Clients" onAction="#onSelectClients" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-building" iconSize="16"/></graphic>
             </Button>
-            <Button text="Users" onAction="#onSelectUsers" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-users" iconSize="14"/></graphic>
+            <Button fx:id="btnUsers" text="Users" onAction="#onSelectUsers" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-users" iconSize="16"/></graphic>
             </Button>
-            <Button text="System Logs" onAction="#onSelectLogs" maxWidth="Infinity" styleClass="btn btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-list-ul" iconSize="14"/></graphic>
+            <Button fx:id="btnLogs" text="System Logs" onAction="#onSelectLogs" maxWidth="Infinity" styleClass="btn-sidebar">
+                <graphic><FontIcon iconLiteral="fas-list-ul" iconSize="16"/></graphic>
             </Button>
         </VBox>
 
         <!-- Bottom -->
-        <VBox spacing="8.0" styleClass="sidebar-nav-container">
-            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn btn-danger">
-                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="14"/></graphic>
+        <VBox styleClass="sidebar-nav-container">
+            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn-sidebar, btn-signout">
+                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="16" iconColor="#EF4444"/></graphic>
             </Button>
         </VBox>
     </VBox>
@@ -53,9 +58,9 @@
         
         <!-- Top Bar -->
         <HBox alignment="CENTER_LEFT" styleClass="workspace-top-bar">
-            <VBox HBox.hgrow="ALWAYS">
-                <Label text="Admin Dashboard" style="-fx-font-size: 24px; -fx-font-weight: 800; -fx-text-fill: #0F172A;"/>
-                <Label fx:id="welcomeLabel" text="Manage your system settings" style="-fx-text-fill: #64748B;"/>
+            <VBox HBox.hgrow="ALWAYS" spacing="4.0">
+                <Label text="Admin Dashboard" style="-fx-font-size: 28px; -fx-font-weight: 800; -fx-text-fill: #2D3D4F; -fx-padding: 0;"/>
+                <Label fx:id="welcomeLabel" text="Signed in as admin (ADMIN)" style="-fx-text-fill: #64748B; -fx-font-size: 14px; -fx-padding: 0;"/>
             </VBox>
         </HBox>
 
@@ -70,22 +75,42 @@
                 <!-- CLIENTS -->
                 <Tab>
                     <ScrollPane fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
-                        <VBox spacing="32.0" styleClass="workspace-body">
-                            <HBox spacing="32.0" VBox.vgrow="ALWAYS">
-                                <VBox spacing="16.0" prefWidth="540.0" styleClass="viewer-container" style="-fx-padding: 24;">
-                                    <Label text="Registered Clients" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
-                                    <ListView fx:id="clientsList" VBox.vgrow="ALWAYS" styleClass="app-tree" style="-fx-background-color: transparent;"/>
-                                    <Button text="Refresh clients" onAction="#onRefreshClients" styleClass="btn">
-                                        <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
+                        <HBox spacing="32.0" styleClass="workspace-body">
+
+                            <!-- Table Section (Card 1) -->
+                            <VBox spacing="24.0" prefWidth="740.0" styleClass="viewer-container">
+                                <Label text="Registered Clients" styleClass="section-title"/>
+                                <ListView fx:id="clientsList" VBox.vgrow="ALWAYS" styleClass="app-tree" style="-fx-background-color: transparent;"/>
+                                <HBox spacing="12.0">
+                                    <Button text="Add Client" onAction="#onCreateClient" styleClass="btn-primary">
+                                        <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
                                     </Button>
+                                    <Button text="Rename" onAction="#onRenameClient" styleClass="btn-secondary">
+                                        <graphic><FontIcon iconLiteral="fas-pen" iconSize="14"/></graphic>
+                                    </Button>
+                                    <Button text="Delete" onAction="#onDeleteClient" styleClass="btn-secondary">
+                                        <graphic><FontIcon iconLiteral="fas-trash" iconSize="14"/></graphic>
+                                    </Button>
+                                </HBox>
+                            </VBox>
+
+                            <!-- Info Section (Card 2) -->
+                            <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card">
+                                <VBox spacing="4.0">
+                                    <Label text="Manage Clients" styleClass="section-title"/>
                                 </VBox>
-                                <VBox spacing="16.0" HBox.hgrow="ALWAYS" styleClass="stat-card" style="-fx-padding: 32; -fx-background-color: #F8FAFC;">
-                                    <Label text="Configuration Note" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
-                                    <Label text="Clients are managed via external integration. To register a new client, please update the main database directly (dbo.Clients table)."
+                                <VBox spacing="20.0">
+                                    <Label text="Add a new client, rename an existing one, or delete clients that have no profiles attached. Clients with profiles must be cleared first."
                                            wrapText="true" style="-fx-text-fill: #64748B; -fx-font-size: 14px;"/>
                                 </VBox>
-                            </HBox>
-                        </VBox>
+                                <HBox spacing="16.0" alignment="BOTTOM_LEFT" VBox.vgrow="ALWAYS">
+                                    <Button text="Refresh Clients" onAction="#onRefreshClients" styleClass="btn-secondary" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                                        <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="14"/></graphic>
+                                    </Button>
+                                </HBox>
+                            </VBox>
+
+                        </HBox>
                     </ScrollPane>
                 </Tab>
 

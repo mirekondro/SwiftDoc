@@ -8,6 +8,7 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 <?import org.kordamp.ikonli.javafx.FontIcon?>
 <?import javafx.scene.control.ScrollPane?>
@@ -19,9 +20,9 @@
             fitToWidth="true" fitToHeight="true" styleClass="workspace-scroll">
     <HBox spacing="32.0" styleClass="workspace-body">
 
-    <!-- Table Section -->
-    <VBox spacing="20.0" prefWidth="700.0" styleClass="viewer-container" style="-fx-padding: 24;">
-        <Label text="Scanning Profiles" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+    <!-- Table Section (Card 1) -->
+    <VBox spacing="24.0" prefWidth="740.0" styleClass="viewer-container">
+        <Label text="Scanning Profiles" styleClass="section-title"/>
         <TableView fx:id="profilesTable" VBox.vgrow="ALWAYS">
             <columns>
                 <TableColumn fx:id="colName"      text="Profile Name"        prefWidth="220"/>
@@ -31,59 +32,81 @@
             </columns>
         </TableView>
         <HBox spacing="12.0">
-            <Button text="Create Profile" onAction="#onCreateClicked" styleClass="btn btn-primary">
-                <graphic><FontIcon iconLiteral="fas-plus"/></graphic>
+            <Button text="Create Profile" onAction="#onCreateClicked" styleClass="btn-primary">
+                <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
             </Button>
-            <Button text="Edit" onAction="#onEditClicked" styleClass="btn">
-                <graphic><FontIcon iconLiteral="fas-pen"/></graphic>
+            <Button text="Edit" onAction="#onEditClicked" styleClass="btn-secondary">
+                <graphic><FontIcon iconLiteral="fas-pen" iconSize="14"/></graphic>
             </Button>
-            <Button fx:id="disableButton" text="Disable" onAction="#onDisableClicked" styleClass="btn btn-danger">
-                <graphic><FontIcon iconLiteral="fas-ban"/></graphic>
+            <Button fx:id="disableButton" text="Disable" onAction="#onDisableClicked" styleClass="btn-secondary">
+                <graphic><FontIcon iconLiteral="fas-ban" iconSize="14"/></graphic>
             </Button>
         </HBox>
     </VBox>
 
-    <!-- Form Section -->
-    <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card" style="-fx-padding: 32;">
-        <Label fx:id="formTitleLabel" text="Configure Profile" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+    <!-- Form Section (Card 2) -->
+    <VBox spacing="24.0" HBox.hgrow="ALWAYS" styleClass="stat-card">
+        <VBox spacing="4.0">
+            <Label fx:id="formTitleLabel" text="Select a profile or click Create" styleClass="section-title"/>
+        </VBox>
 
-        <VBox spacing="16.0">
-            <VBox spacing="8.0">
-                <Label text="Profile Name" style="-fx-font-weight: 700;"/>
+        <VBox spacing="20.0">
+            <!-- Profile Name -->
+            <VBox spacing="4.0">
+                <Label text="Profile Name" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
                 <TextField fx:id="nameField" promptText="e.g. Standard municipal box"/>
             </VBox>
 
-            <VBox spacing="8.0">
-                <Label text="Associated Client" style="-fx-font-weight: 700;"/>
-                <ComboBox fx:id="clientCombo" maxWidth="Infinity" promptText="Select client"/>
+            <!-- Associated Client -->
+            <VBox spacing="4.0">
+                <Label text="Associated Client" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
+                <ComboBox fx:id="clientCombo" maxWidth="Infinity" promptText="Select Client"/>
             </VBox>
 
-            <CheckBox fx:id="dupDetectCheck" text="Enable intelligent duplicate detection" style="-fx-font-weight: 600;"/>
+            <!-- Page Processing Toggle -->
+            <VBox spacing="12.0">
+                <Label text="Page Processing" styleClass="section-title" style="-fx-font-size: 16px;"/>
+                <CheckBox fx:id="dupDetectCheck" text="Page Processing (applied at export)" styleClass="toggle-switch" selected="true"/>
+                <CheckBox fx:id="blackAndWhiteCheck" text="Convert to black &amp; white" styleClass="toggle-switch"/>
+            </VBox>
+
+            <!-- Rotation -->
+            <VBox spacing="4.0">
+                <Label text="Rotation" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
+                <HBox spacing="12.0" alignment="CENTER_LEFT">
+                    <Spinner fx:id="rotationSpinner" editable="true" prefWidth="100.0"/>
+                    <Label text="degrees" style="-fx-text-fill: #64748B;"/>
+                    <HBox HBox.hgrow="ALWAYS"/>
+                    <Button styleClass="btn-icon" text="-" onAction="#onRotationDecrement"/>
+                    <Button styleClass="btn-icon-primary" text="+" onAction="#onRotationIncrement"/>
+                </HBox>
+            </VBox>
+
+            <!-- Brightness -->
+            <VBox spacing="4.0">
+                <HBox alignment="CENTER_LEFT" spacing="8.0">
+                    <Label text="Brightness" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 700;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="brightnessValueLabel" text="0" style="-fx-text-fill: #2D3D4F; -fx-font-weight: 800;"/>
+                </HBox>
+                <HBox spacing="12.0" alignment="CENTER">
+                    <FontIcon iconLiteral="fas-sun" iconSize="16" iconColor="#64748B"/>
+                    <Slider fx:id="brightnessSlider" min="-100" max="100" value="0" HBox.hgrow="ALWAYS"/>
+                    <FontIcon iconLiteral="fas-moon" iconSize="16" iconColor="#64748B"/>
+                </HBox>
+            </VBox>
         </VBox>
 
-        <Label text="Page Processing (applied at export)" styleClass="section-title"/>
-
-        <Label text="Rotation (degrees)"/>
-        <Spinner fx:id="rotationSpinner" editable="true" maxWidth="160.0"/>
-
-        <Label text="Brightness"/>
-        <HBox spacing="8.0" alignment="CENTER_LEFT">
-            <Slider fx:id="brightnessSlider" min="-100" max="100" value="0"
-                    showTickMarks="true" showTickLabels="true" majorTickUnit="50"
-                    HBox.hgrow="ALWAYS" maxWidth="1.7976931348623157E308"/>
-            <Label fx:id="brightnessValueLabel" text="0" minWidth="36.0"/>
-        </HBox>
-
-        <CheckBox fx:id="blackAndWhiteCheck" text="Convert to black &amp; white"/>
-
-        <HBox spacing="12.0">
-            <Button text="Save Profile" onAction="#onSaveClicked" styleClass="btn btn-primary">
-                <graphic><FontIcon iconLiteral="fas-save"/></graphic>
+        <HBox spacing="16.0" alignment="BOTTOM_LEFT" VBox.vgrow="ALWAYS">
+            <Button text="Save Profile" onAction="#onSaveClicked" styleClass="btn-primary" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                <graphic><FontIcon iconLiteral="fas-save" iconSize="14"/></graphic>
             </Button>
-            <Button text="Discard Changes" onAction="#onCancelClicked" styleClass="btn"/>
+            <Button text="Discard Changes" onAction="#onCancelClicked" styleClass="btn-secondary" maxWidth="Infinity" HBox.hgrow="ALWAYS">
+                <graphic><FontIcon iconLiteral="fas-times" iconSize="14"/></graphic>
+            </Button>
         </HBox>
 
-        <Label fx:id="messageLabel" text="" wrapText="true"/>
+        <Label fx:id="messageLabel" text="" wrapText="true" style="-fx-text-fill: #4CD07D;"/>
     </VBox>
 
 </HBox>
