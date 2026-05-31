@@ -80,13 +80,24 @@
                                 <VBox spacing="16.0" prefWidth="540.0" styleClass="viewer-container" style="-fx-padding: 24;">
                                     <Label text="Registered Clients" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
                                     <ListView fx:id="clientsList" VBox.vgrow="ALWAYS" styleClass="app-tree" style="-fx-background-color: transparent;"/>
-                                    <Button text="Refresh clients" onAction="#onRefreshClients" styleClass="btn">
-                                        <graphic><FontIcon iconLiteral="fas-sync-alt"/></graphic>
-                                    </Button>
+                                    <HBox spacing="12.0">
+                                        <Button text="Add" onAction="#onCreateClient" styleClass="btn-primary">
+                                            <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
+                                        </Button>
+                                        <Button text="Rename" onAction="#onRenameClient" styleClass="btn-secondary">
+                                            <graphic><FontIcon iconLiteral="fas-pen" iconSize="14"/></graphic>
+                                        </Button>
+                                        <Button text="Delete" onAction="#onDeleteClient" styleClass="btn-secondary">
+                                            <graphic><FontIcon iconLiteral="fas-trash" iconSize="14"/></graphic>
+                                        </Button>
+                                        <Button text="Refresh" onAction="#onRefreshClients" styleClass="btn">
+                                            <graphic><FontIcon iconLiteral="fas-sync-alt" iconSize="14"/></graphic>
+                                        </Button>
+                                    </HBox>
                                 </VBox>
                                 <VBox spacing="16.0" HBox.hgrow="ALWAYS" styleClass="stat-card" style="-fx-padding: 32; -fx-background-color: #F8FAFC;">
-                                    <Label text="Configuration Note" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
-                                    <Label text="Clients are managed via external integration. To register a new client, please update the main database directly (dbo.Clients table)."
+                                    <Label text="Manage Clients" styleClass="sidebar-section-title" style="-fx-text-fill: #0F172A; -fx-padding: 0;"/>
+                                    <Label text="Add a new client, rename an existing one, or delete clients that have no profiles attached. Clients with profiles must be cleared first."
                                            wrapText="true" style="-fx-text-fill: #64748B; -fx-font-size: 14px;"/>
                                 </VBox>
                             </HBox>

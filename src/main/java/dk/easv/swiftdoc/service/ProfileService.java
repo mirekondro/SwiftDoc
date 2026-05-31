@@ -43,6 +43,37 @@ public class ProfileService {
         return clientDAO.create(trimmed);
     }
 
+    public void renameClient(Client client, String newName) throws SQLException {
+        if (client == null) {
+            throw new IllegalArgumentException("Client is required.");
+        }
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("Client name cannot be empty.");
+        }
+        String trimmed = newName.trim();
+        if (trimmed.equals(client.getClientName())) {
+            return;
+        }
+        if (clientDAO.existsByName(trimmed)) {
+            throw new IllegalArgumentException("A client with that name already exists.");
+        }
+        clientDAO.rename(client.getClientId(), trimmed);
+        client.setClientName(trimmed);
+    }
+
+    public void deleteClient(Client client) throws SQLException {
+        if (client == null) {
+            throw new IllegalArgumentException("Client is required.");
+        }
+        int profileCount = clientDAO.countProfiles(client.getClientId());
+        if (profileCount > 0) {
+            throw new IllegalStateException(
+                    "Cannot delete client — it still has " + profileCount + " profile(s). "
+                            + "Remove or reassign profiles first.");
+        }
+        clientDAO.delete(client.getClientId());
+    }
+
     public List<ScanningProfile> getProfiles() throws SQLException {
         return profileDAO.getAll();
     }
