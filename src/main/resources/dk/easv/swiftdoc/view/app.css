@@ -6,10 +6,43 @@
 /* ROOT & BASE                                                         */
 /* ------------------------------------------------------------------ */
 .root, .app-root {
-    -fx-font-family: "Montserrat", "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 14px;
     -fx-font-weight: 600;
     -fx-background-color: #F8FAFC;
+}
+
+/* Apply Montserrat to text-bearing controls only — never to FontIcon nodes,
+   which carry their own (FontAwesome) font. */
+.label,
+.button,
+.toggle-button,
+.text-field,
+.password-field,
+.text-area,
+.combo-box-base,
+.combo-box-base .list-cell,
+.choice-box,
+.menu-bar,
+.menu-item,
+.context-menu,
+.check-box,
+.radio-button,
+.tab,
+.table-view,
+.table-view .column-header,
+.table-row-cell,
+.table-cell,
+.tree-view,
+.tree-cell,
+.list-view,
+.list-cell,
+.spinner,
+.date-picker,
+.date-picker-popup,
+.tooltip,
+.dialog-pane,
+.alert {
+    -fx-font-family: "Montserrat", "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
 /* ------------------------------------------------------------------ */
@@ -38,6 +71,66 @@
     -fx-font-weight: 700;
     -fx-padding: 12 16;
     -fx-text-transform: capitalize;
+}
+
+/* TreeView inside the dark sidebar: transparent surface, light text */
+.app-sidebar .tree-view,
+.app-sidebar .tree-view .virtual-flow,
+.app-sidebar .tree-view .viewport {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+.app-sidebar .tree-view {
+    -fx-border-color: transparent;
+}
+.app-sidebar .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #CBD5E1;
+    -fx-padding: 6 10;
+}
+.app-sidebar .tree-cell:hover {
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-background-radius: 8;
+    -fx-text-fill: #FFFFFF;
+}
+.app-sidebar .tree-cell:selected,
+.app-sidebar .tree-cell:filled:selected {
+    -fx-background-color: rgba(255,255,255,0.10);
+    -fx-background-radius: 8;
+    -fx-text-fill: #FFFFFF;
+}
+.app-sidebar .tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: #94A3B8;
+}
+.app-sidebar .tree-cell:expanded > .tree-disclosure-node > .arrow {
+    -fx-background-color: #FFFFFF;
+}
+.app-sidebar .tree-view .scroll-bar:vertical,
+.app-sidebar .tree-view .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+.app-sidebar .tree-view .scroll-bar .thumb {
+    -fx-background-color: rgba(255,255,255,0.15);
+    -fx-background-radius: 8;
+}
+
+/* Custom sidebar tree cell content */
+.sidebar-cell-text {
+    -fx-text-fill: #E2E8F0;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+.app-sidebar .tree-cell:selected .sidebar-cell-text,
+.app-sidebar .tree-cell:hover .sidebar-cell-text {
+    -fx-text-fill: #FFFFFF;
+}
+.app-sidebar .tree-cell .ikonli-font-icon {
+    -fx-icon-color: #94A3B8;
+}
+.app-sidebar .tree-cell:hover .ikonli-font-icon,
+.app-sidebar .tree-cell:selected .ikonli-font-icon {
+    -fx-icon-color: #FFFFFF;
 }
 
 /* ------------------------------------------------------------------ */
@@ -205,6 +298,61 @@
     -fx-pref-height: 22;
 }
 
+/* Compact search pill used in workspace top bars */
+.topbar-search {
+    -fx-background-color: #F8FAFC;
+    -fx-background-radius: 999;
+    -fx-border-color: #E2E8F0;
+    -fx-border-radius: 999;
+    -fx-padding: 0 8 0 14;
+    -fx-pref-height: 36;
+    -fx-min-height: 36;
+    -fx-max-height: 36;
+    -fx-alignment: center-left;
+}
+.topbar-search .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-font-size: 13px;
+    -fx-pref-height: 34;
+}
+.topbar-search-clear {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 4 6;
+    -fx-cursor: hand;
+    -fx-min-width: 0;
+    -fx-min-height: 0;
+}
+.topbar-search-clear .ikonli-font-icon { -fx-icon-color: #94A3B8; }
+.topbar-search-clear:hover .ikonli-font-icon { -fx-icon-color: #475569; }
+
+/* Compact inline stat for top bar */
+.stat-pill {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 999;
+    -fx-border-color: #E2E8F0;
+    -fx-border-radius: 999;
+    -fx-padding: 0 14;
+    -fx-pref-height: 36;
+    -fx-min-height: 36;
+    -fx-max-height: 36;
+    -fx-effect: dropshadow(gaussian, rgba(15,23,42,0.04), 6, 0, 0, 2);
+}
+.stat-pill-label {
+    -fx-text-fill: #94A3B8;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+.stat-pill-value {
+    -fx-text-fill: #1F2937;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
 /* ------------------------------------------------------------------ */
 /* BUTTONS                                                             */
 /* ------------------------------------------------------------------ */
@@ -276,6 +424,33 @@
     -fx-text-fill: #FFFFFF;
 }
 .btn-sidebar-active .ikonli-font-icon { -fx-icon-color: #FFFFFF; }
+
+.btn-sidebar-cta {
+    -fx-background-color: #24C79F;
+    -fx-text-fill: #FFFFFF;
+    -fx-background-radius: 12;
+    -fx-border-color: transparent;
+    -fx-border-radius: 12;
+    -fx-padding: 12 16;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+    -fx-alignment: CENTER_LEFT;
+    -fx-graphic-text-gap: 10;
+    -fx-effect: dropshadow(gaussian, rgba(36,199,159,0.35), 12, 0, 0, 4);
+}
+.btn-sidebar-cta:hover {
+    -fx-background-color: #1FA985;
+}
+.btn-sidebar-cta .ikonli-font-icon { -fx-icon-color: #FFFFFF; }
+.btn-sidebar-cta:hover .ikonli-font-icon { -fx-icon-color: #FFFFFF; }
+.btn-sidebar-cta:disabled {
+    -fx-background-color: rgba(36,199,159,0.25);
+    -fx-text-fill: rgba(255,255,255,0.55);
+    -fx-opacity: 1.0;
+    -fx-effect: null;
+}
+.btn-sidebar-cta:disabled .ikonli-font-icon { -fx-icon-color: rgba(255,255,255,0.55); }
 
 .btn-signout {
     -fx-text-fill: #EF4444;

@@ -1444,7 +1444,7 @@ public class MainController {
             finishSessionButton.setVisible(false);
             finishSessionButton.setManaged(false);
         }
-        sessionInfoLabel.setText("No active session");
+        sessionInfoLabel.setText("None");
         lastResultLabel.setText("Session finished. Box #" + finishedBoxId
                 + " moved to history.");
         viewerCaptionLabel.setText("No page to display yet");
@@ -1630,13 +1630,8 @@ public class MainController {
     }
 
     private void refreshSessionLabels() {
-        Document current = activeSession.getCurrentDocument();
-        String docLine = (current == null)
-                ? "Current document: none yet"
-                : "Current document: #" + current.getDocumentNumber();
-        sessionInfoLabel.setText(
-                "Box #" + activeSession.getBox().getBoxId() + "\n" + docLine);
-        counterLabel.setText("Files scanned: " + activeSession.getTotalFileCount());
+        sessionInfoLabel.setText("Box #" + activeSession.getBox().getBoxId());
+        counterLabel.setText(String.valueOf(activeSession.getTotalFileCount()));
     }
 
     private void handleRetryableError(String header, String body) {
