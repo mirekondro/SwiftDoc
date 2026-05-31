@@ -5,8 +5,8 @@
 /* ------------------------------------------------------------------ */
 /* ROOT & BASE                                                         */
 /* ------------------------------------------------------------------ */
-.app-root {
-    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+.root, .app-root {
+    -fx-font-family: "Montserrat", "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 14px;
     -fx-font-weight: 600;
     -fx-background-color: #F8FAFC;
@@ -276,6 +276,16 @@
     -fx-text-fill: #FFFFFF;
 }
 .btn-sidebar-active .ikonli-font-icon { -fx-icon-color: #FFFFFF; }
+
+.btn-signout {
+    -fx-text-fill: #EF4444;
+}
+.btn-signout:hover {
+    -fx-background-color: rgba(239,68,68,0.12);
+    -fx-text-fill: #FCA5A5;
+}
+.btn-signout .ikonli-font-icon { -fx-icon-color: #EF4444; }
+.btn-signout:hover .ikonli-font-icon { -fx-icon-color: #FCA5A5; }
 
 .btn-icon {
     -fx-background-color: #E2E8F0;

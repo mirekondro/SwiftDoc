@@ -47,8 +47,8 @@
 
         <!-- Bottom -->
         <VBox styleClass="sidebar-nav-container">
-            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn-sidebar">
-                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="16"/></graphic>
+            <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn-sidebar, btn-signout">
+                <graphic><FontIcon iconLiteral="fas-sign-out-alt" iconSize="16" iconColor="#EF4444"/></graphic>
             </Button>
         </VBox>
     </VBox>
