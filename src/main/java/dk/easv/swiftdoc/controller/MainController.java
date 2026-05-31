@@ -1841,27 +1841,36 @@ public class MainController {
             markDocumentsAsExportedAsync(result.exportedDocumentIds());
         }
 
-
+        boolean nothingExported = result.filesWritten() == 0;
         StringBuilder summary = new StringBuilder();
-        summary.append("Wrote ").append(result.filesWritten())
-                .append(" TIFF file(s) totalling ")
-                .append(result.pagesWritten()).append(" page(s)")
-                .append(" to:\n").append(result.outputDir());
+        if (nothingExported) {
+            summary.append("No TIFF files were written.");
+        } else {
+            summary.append("Wrote ").append(result.filesWritten())
+                    .append(" TIFF file(s) totalling ")
+                    .append(result.pagesWritten()).append(" page(s)")
+                    .append(" to:\n").append(result.outputDir());
+        }
 
         if (!result.skipped().isEmpty()) {
-            summary.append("\n\nSkipped:");
+            summary.append(nothingExported ? "\n\nReason:" : "\n\nSkipped:");
             for (String s : result.skipped()) {
                 summary.append("\n  • ").append(s);
             }
         }
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Export complete");
-        alert.setHeaderText("Box exported successfully");
+        Alert alert = new Alert(nothingExported
+                ? Alert.AlertType.WARNING : Alert.AlertType.INFORMATION);
+        alert.setTitle(nothingExported ? "Nothing to export" : "Export complete");
+        alert.setHeaderText(nothingExported
+                ? "The export folder is empty"
+                : "Box exported successfully");
         alert.setContentText(summary.toString());
         alert.showAndWait();
 
-        lastResultLabel.setText("Exported " + result.filesWritten() + " file(s).");
+        lastResultLabel.setText(nothingExported
+                ? "Nothing was exported."
+                : "Exported " + result.filesWritten() + " file(s).");
     }
 
     public ScanSession getActiveSession() {
