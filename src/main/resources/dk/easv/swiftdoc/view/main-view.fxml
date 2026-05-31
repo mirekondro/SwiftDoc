@@ -111,7 +111,7 @@
                             <Label fx:id="viewerCaptionLabel" text="No file selected" styleClass="section-title"/>
                             <Label fx:id="lastResultLabel" text="Select a file from the sidebar to start viewing." style="-fx-text-fill: #64748B; -fx-font-size: 14px;"/>
                         </VBox>
-                        <Button text="Delete file" onAction="#onDeleteFileCommand" styleClass="btn-secondary">
+                        <Button text="Delete file (Del)" onAction="#onDeleteFileCommand" styleClass="btn-secondary">
                             <graphic><FontIcon iconLiteral="fas-trash-alt" iconSize="14"/></graphic>
                         </Button>
                     </HBox>
@@ -145,8 +145,8 @@
                     <graphic><FontIcon iconLiteral="fas-search-plus" iconSize="14"/></graphic>
                 </Button>
                 <Separator orientation="VERTICAL" prefHeight="20"/>
-                <Button text="Reset" onAction="#onResetRotationCommand" styleClass="btn-secondary"/>
-                <Button text="Rotate" onAction="#onCustomRotationCommand" styleClass="btn-secondary"/>
+                <Button text="Reset (Ctrl+R)" onAction="#onResetRotationCommand" styleClass="btn-secondary"/>
+                <Button text="Rotate (Ctrl+T)" onAction="#onCustomRotationCommand" styleClass="btn-secondary"/>
             </HBox>
         </HBox>
     </VBox>
