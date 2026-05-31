@@ -324,8 +324,14 @@ public class MainController {
     private void onKeyPressed(KeyEvent event) {
         KeyCode code = event.getCode();
 
-        if (event.isShiftDown() && code == KeyCode.S) {
-            onShowShortcutsCommand();
+        if (code == KeyCode.F3) {
+            onSaveCommand();
+            event.consume();
+            return;
+        }
+        if (code == KeyCode.DELETE) {
+            // Delete already confirms before removing, so this shortcut is safe.
+            onDeleteFileCommand();
             event.consume();
             return;
         }

@@ -32,13 +32,13 @@
         <!-- Primary Actions -->
         <VBox spacing="12.0" styleClass="sidebar-nav-container">
             <Label text="Workspace" styleClass="sidebar-section-title"/>
-            <Button text="New scan" onAction="#onNewCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
+            <Button text="New scan (F1)" onAction="#onNewCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
                 <graphic><FontIcon iconLiteral="fas-plus" iconSize="14"/></graphic>
             </Button>
-            <Button fx:id="scanButton" text="Scan page" onAction="#onScanCommand" disable="true" maxWidth="Infinity" styleClass="btn btn-primary">
+            <Button fx:id="scanButton" text="Scan page (F2)" onAction="#onScanCommand" disable="true" maxWidth="Infinity" styleClass="btn btn-primary">
                 <graphic><FontIcon iconLiteral="fas-camera" iconSize="14"/></graphic>
             </Button>
-            <Button text="Export scans" onAction="#onSaveCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
+            <Button text="Export scans (F3)" onAction="#onSaveCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
                 <graphic><FontIcon iconLiteral="fas-file-export" iconSize="14"/></graphic>
             </Button>
             <Button fx:id="finishSessionButton" text="Finish session" onAction="#onFinishSessionCommand" visible="false" managed="false" maxWidth="Infinity" styleClass="btn btn-sidebar">
@@ -54,7 +54,7 @@
 
         <!-- Bottom Actions -->
         <VBox spacing="8.0" styleClass="sidebar-nav-container">
-            <Button text="Keyboard shortcuts" onAction="#onShowShortcutsCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
+            <Button text="Keyboard shortcuts (Shift+S)" onAction="#onShowShortcutsCommand" maxWidth="Infinity" styleClass="btn btn-sidebar">
                 <graphic><FontIcon iconLiteral="fas-keyboard" iconSize="14"/></graphic>
             </Button>
             <Button text="Sign out" onAction="#onLogoutCommand" maxWidth="Infinity" styleClass="btn btn-danger">
@@ -100,7 +100,7 @@
                         <Label fx:id="lastResultLabel" text="Select a file from the sidebar to start viewing." style="-fx-text-fill: #64748B;"/>
                     </VBox>
                     <HBox spacing="8.0" alignment="CENTER_RIGHT">
-                        <Button text="Delete file" onAction="#onDeleteFileCommand" styleClass="btn btn-danger">
+                        <Button text="Delete file (Delete)" onAction="#onDeleteFileCommand" styleClass="btn btn-danger">
                             <graphic><FontIcon iconLiteral="fas-trash-alt"/></graphic>
                         </Button>
                     </HBox>
